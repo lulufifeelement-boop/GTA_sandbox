@@ -194,7 +194,7 @@ function loadGltf(path){
  if(!gltfPromises.has(path))gltfPromises.set(path,(async()=>{
   const response=await fetch(ASSET_BASE+path+'.b64');
   if(!response.ok)throw new Error('Asset request failed ('+response.status+'): '+path);
-  const encoded=(await response.text()).replace(/\\s/g,'');
+  const encoded=(await response.text()).replace(/\s/g,'');
   const binary=atob(encoded),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   return await new Promise((resolve,reject)=>assetLoader.parse(bytes.buffer,'',gltf=>resolve(gltf.scene),reject));

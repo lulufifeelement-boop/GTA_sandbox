@@ -3,378 +3,2653 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#111111">
-<title>Grand City Sandbox 3D — Mobile Test</title>
+<meta name="theme-color" content="#090d14">
+<title>Grand City Sandbox — Полная версия по ТЗ (Кремль, FFD-Аварии, Вертолёт 60 Гц)</title>
 <style>
-  * { box-sizing: border-box; user-select: none; -webkit-user-select:none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-  html, body { width:100%; height:100%; overflow:hidden; background:#111; font-family:'Segoe UI',Tahoma,sans-serif; color:#fff; touch-action:none; overscroll-behavior:none; }
-  canvas.webgl { position:fixed; inset:0; z-index:0; display:block; width:100%; height:100%; touch-action:none; }
-  #hud { position:fixed; inset:0; z-index:10; pointer-events:none; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
-  .top-right { position:absolute; top:calc(12px + env(safe-area-inset-top)); right:12px; text-align:right; }
-  #stars { font-size:clamp(19px, 4vw, 30px); letter-spacing:2px; color:rgba(255,255,255,.2); text-shadow:0 2px 6px #000; white-space:nowrap; }
-  .star-active { color:#ffcc00!important; text-shadow:0 0 12px #ff9900; }
-  .bar-wrap { width:clamp(110px, 27vw, 200px); height:10px; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.25); margin-top:6px; margin-left:auto; border-radius:3px; overflow:hidden; }
-  #hp-bar { width:100%; height:100%; background:linear-gradient(90deg,#2ecc71,#27ae60); transition:width .2s; }
-  #vehicle-badge { margin-top:6px; max-width:46vw; font-size:clamp(11px, 2.8vw, 16px); font-weight:700; color:#f1c40f; text-shadow:0 2px 4px #000; }
-  #speedo { position:absolute; bottom:calc(18px + env(safe-area-inset-bottom)); right:12px; background:rgba(10,14,20,.82); border:1px solid rgba(255,255,255,.18); padding:8px 12px; border-radius:10px; text-align:right; display:none; backdrop-filter:blur(4px); min-width:88px; }
-  #speed-val { font-size:clamp(26px, 7vw, 40px); font-weight:800; font-family:monospace; color:#00e5ff; line-height:1; }
-  #speed-unit { font-size:10px; color:#aaa; letter-spacing:1px; }
-  #radar-wrap { position:absolute; bottom:calc(16px + env(safe-area-inset-bottom)); left:12px; width:clamp(112px, 31vw, 190px); height:clamp(84px, 22vw, 136px); border:2px solid rgba(255,255,255,.35); border-radius:8px; overflow:hidden; background:#1e272e; box-shadow:0 6px 20px rgba(0,0,0,.6); }
-  #radar { width:100%; height:100%; display:block; }
-  #controls { position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; max-width:min(48vw,400px); background:rgba(10,14,20,.78); border-left:3px solid #00e5ff; padding:8px 10px; border-radius:6px; font-size:11px; line-height:1.55; backdrop-filter:blur(4px); }
-  .key { background:#333; padding:1px 5px; border-radius:4px; border:1px solid #666; font-weight:bold; color:#fff; font-family:monospace; }
-  #prompt { position:absolute; bottom:calc(150px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); padding:8px 12px; border-radius:6px; border:1px solid #f1c40f; font-size:clamp(11px, 3vw, 14px); display:none; text-align:center; max-width:70vw; white-space:normal; }
-  #mobile-controls { display:none; position:absolute; inset:0; pointer-events:none; }
-  .touch-cluster { position:absolute; bottom:calc(20px + env(safe-area-inset-bottom)); display:flex; gap:8px; align-items:flex-end; pointer-events:auto; }
-  #move-cluster { left:12px; bottom:calc(124px + env(safe-area-inset-bottom)); }
-  #action-cluster { right:12px; bottom:calc(116px + env(safe-area-inset-bottom)); display:grid; grid-template-columns:repeat(2, minmax(54px, 68px)); gap:8px; }
-  .touch-btn { display:flex; align-items:center; justify-content:center; min-width:54px; min-height:52px; padding:7px; border:1px solid rgba(255,255,255,.35); border-radius:14px; color:#fff; background:rgba(10,18,28,.72); box-shadow:0 3px 10px rgba(0,0,0,.28); font-weight:800; font-size:13px; text-align:center; line-height:1.1; pointer-events:auto; touch-action:none; }
-  .touch-btn:active, .touch-btn.pressed { background:rgba(0,180,220,.8); border-color:#7cf3ff; transform:scale(.97); }
-  .touch-btn.action { background:rgba(16,28,42,.78); }
-  .touch-btn.primary { border-color:#f1c40f; color:#ffe082; }
-  #mobile-extra { position:absolute; right:12px; top:calc(112px + env(safe-area-inset-top)); display:flex; gap:7px; pointer-events:auto; }
-  #mobile-extra .touch-btn { min-width:48px; min-height:42px; font-size:12px; border-radius:10px; }
-  #joystick { position:relative; width:116px; height:116px; border-radius:50%; border:2px solid rgba(255,255,255,.35); background:rgba(0,0,0,.25); touch-action:none; pointer-events:auto; }
-  #stick { position:absolute; width:48px; height:48px; left:32px; top:32px; border-radius:50%; background:rgba(0,229,255,.65); border:2px solid rgba(255,255,255,.7); box-shadow:0 2px 10px rgba(0,0,0,.4); pointer-events:none; }
-  #notice { position:absolute; top:calc(70px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.65); padding:5px 9px; border-radius:6px; color:#fff; font-size:10px; opacity:.8; display:none; white-space:nowrap; }
-  @media (pointer: coarse), (max-width: 760px) {
-    #controls { display:none; }
-    #mobile-controls { display:block; }
-    #prompt { bottom:calc(238px + env(safe-area-inset-bottom)); }
-    #radar-wrap { bottom:calc(12px + env(safe-area-inset-bottom)); left:10px; }
-    #speedo { bottom:calc(12px + env(safe-area-inset-bottom)); right:10px; }
-    #mobile-extra { top:calc(100px + env(safe-area-inset-top)); }
-    #move-cluster { bottom:calc(116px + env(safe-area-inset-bottom)); }
-    #action-cluster { bottom:calc(106px + env(safe-area-inset-bottom)); }
+  * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+  html { width:100%; height:100%; overscroll-behavior:none; }
+  body { overflow: hidden; touch-action:none; overscroll-behavior:none; background: #090d14; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+
+  /* Левая панель управления и телеметрии */
+  #left-panel { position: absolute; top: 14px; left: 14px; display: flex; flex-direction: column; gap: 8px; width: 410px; pointer-events: auto; }
+  .card { background: rgba(10, 15, 24, 0.86); border-left: 4px solid #00e5ff; padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.55; backdrop-filter: blur(6px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+  .key { background: #263238; padding: 1px 6px; border-radius: 4px; border: 1px solid #546e7a; font-weight: 700; color: #00e5ff; font-family: monospace; }
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .btn { background: #1e293b; color: #e2e8f0; border: 1px solid #475569; padding: 4px 9px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: 600; transition: 0.15s; }
+  .btn:hover { background: #0284c7; border-color: #38bdf8; color: #fff; }
+  .btn.active { background: #0ea5e9; border-color: #7dd3fc; color: #000; }
+
+  /* Правая верхняя панель: Розыск, Деньги, Здоровье, Броня */
+  .top-right { position: absolute; top: 14px; right: 20px; text-align: right; width: 250px; }
+  #time-weather { font-size: 13px; color: #90caf9; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; text-shadow: 0 1px 4px #000; }
+  #money-val { font-size: 26px; font-weight: 900; color: #2ecc71; font-family: monospace; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+  #stars { font-size: 30px; letter-spacing: 4px; color: rgba(255,255,255,0.16); text-shadow: 0 2px 8px rgba(0,0,0,0.9); transition: opacity 0.2s; }
+  .star-active { color: #ffcc00 !important; text-shadow: 0 0 14px #ff9900; }
+  .star-evade { animation: blink 0.6s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .bars-row { display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end; }
+  .bar-wrap { width: 115px; height: 11px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.25); border-radius: 3px; overflow: hidden; }
+  #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #00e676, #2ecc71); transition: width 0.15s; }
+  #armor-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #29b6f6, #0288d1); transition: width 0.15s; }
+  #vehicle-badge { margin-top: 6px; font-size: 16px; font-weight: 800; color: #ffca28; text-shadow: 0 2px 6px #000; }
+  #witness-alert { margin-top: 4px; font-size: 12px; color: #ff5252; font-weight: 700; display: none; text-shadow: 0 1px 3px #000; }
+
+  /* Спидометр и диагностика узлов автомобиля / вертолёта */
+  #speedo { position: absolute; bottom: 20px; right: 20px; background: rgba(10,15,24,0.88); border: 1px solid rgba(255,255,255,0.18); padding: 12px 18px; border-radius: 12px; text-align: right; display: none; backdrop-filter: blur(6px); min-width: 245px; }
+  #speed-val { font-size: 42px; font-weight: 900; font-family: monospace; color: #00e5ff; line-height: 1; }
+  #speed-unit { font-size: 11px; color: #b0bec5; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+  #diag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.12); font-size: 11px; text-align: left; }
+  .diag-item { display: flex; justify-content: space-between; color: #cfd8dc; }
+  .diag-ok { color: #00e676; font-weight: 700; }
+  .diag-warn { color: #ffb300; font-weight: 700; }
+  .diag-bad { color: #ff1744; font-weight: 700; }
+
+  /* Радар (Миникарта с зоной поиска) */
+  #radar-wrap { position: absolute; bottom: 20px; left: 20px; width: 230px; height: 165px; border: 3px solid rgba(255,255,255,0.4); border-radius: 10px; overflow: hidden; background: #121b24; box-shadow: 0 8px 25px rgba(0,0,0,0.7); }
+  #radar { width: 100%; height: 100%; display: block; }
+  #loc-banner { position: absolute; bottom: 192px; left: 20px; font-size: 14px; font-weight: 800; color: #ffca28; text-shadow: 0 2px 6px #000; letter-spacing: 0.5px; }
+
+  /* Подсказки контекстных действий и аудиогид */
+  #prompt { position: absolute; bottom: 195px; left: 50%; transform: translateX(-50%); background: rgba(10,15,24,0.94); padding: 10px 22px; border-radius: 8px; border: 1px solid #ffca28; font-size: 14px; display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.65); text-align: center; }
+  #toast { position: absolute; top: 85px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.92); border: 1px solid #38bdf8; padding: 10px 20px; border-radius: 8px; font-size: 14px; color: #f8fafc; display: none; box-shadow: 0 6px 20px rgba(0,0,0,0.6); max-width: 560px; text-align: center; }
+
+  /* Экраны Смерти / Ареста (Wasted / Busted) */
+  #overlay-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.78); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
+  #overlay-title { font-size: 72px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 4px 24px #000; margin-bottom: 12px; }
+  #overlay-sub { font-size: 18px; color: #e2e8f0; }
+
+  /* Полноэкранная карта с быстрым перемещением (Fast Travel) */
+  #big-map-modal { position: absolute; inset: 40px; background: rgba(10, 16, 26, 0.96); border: 2px solid #38bdf8; border-radius: 14px; display: none; flex-direction: column; padding: 20px; z-index: 40; pointer-events: auto; box-shadow: 0 12px 45px rgba(0,0,0,0.85); }
+  .map-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .tp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: auto; }
+  .tp-card { background: #1e293b; border: 1px solid #475569; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: 0.15s; }
+  .tp-card:hover { background: #0284c7; border-color: #7dd3fc; }
+  .tp-card h4 { font-size: 13px; color: #ffca28; margin-bottom: 4px; }
+  .tp-card p { font-size: 11px; color: #cbd5e1; }
+
+  /* Touch controls */
+  #mobile-controls{display:none;position:fixed;inset:0;z-index:25;pointer-events:none;touch-action:none}
+  .mobile-cluster{position:absolute;pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:none}
+  #mobile-left{left:10px;bottom:calc(98px + env(safe-area-inset-bottom))}
+  #stick-base{width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.48);background:rgba(5,15,25,.42);box-shadow:0 4px 12px #0005;position:relative;touch-action:none}
+  #stick-knob{width:46px;height:46px;position:absolute;left:30px;top:30px;border-radius:50%;background:rgba(0,229,255,.78);border:2px solid #fffd;box-shadow:0 3px 12px #0006;pointer-events:none}
+  #mobile-right{right:9px;bottom:calc(98px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,64px);gap:5px}
+  .touch-key{min-width:0;min-height:39px;padding:5px 3px;border:1px solid #ffffff70;border-radius:10px;background:rgba(10,20,32,.84);color:#fff;font:800 10px/1.12 'Segoe UI',system-ui,sans-serif;text-align:center;box-shadow:0 3px 10px #0005;touch-action:none;-webkit-tap-highlight-color:transparent}
+  .touch-key.primary{border-color:#ffca28;color:#ffe082;background:rgba(48,37,11,.85)}
+  .touch-key.active,.touch-key:active{background:rgba(0,160,210,.9);border-color:#7dd3fc;transform:scale(.97)}
+  #mobile-run{width:110px;min-height:34px}
+  @media (pointer:coarse),(max-width:800px){
+    #mobile-controls{display:block}
+    #left-panel{top:calc(6px + env(safe-area-inset-top));left:6px;width:min(57vw,360px);gap:5px}
+    #left-panel .card{font-size:9px;line-height:1.35;padding:6px 8px}
+    #left-panel .card:first-child>div:not(.toolbar){display:none}
+    #left-panel .toolbar{margin-top:0;gap:4px}
+    #left-panel .btn{font-size:9px;padding:4px 5px}
+    #asset-status{max-width:100%}
+    .top-right{top:calc(6px + env(safe-area-inset-top));right:7px;width:38vw}
+    #time-weather{font-size:10px} #money-val{font-size:18px} #stars{font-size:20px;letter-spacing:1px}
+    .bars-row{gap:3px;margin-top:3px}.bar-wrap{width:66px;height:8px}
+    #vehicle-badge{font-size:11px;margin-top:3px} #witness-alert{font-size:9px}
+    #radar-wrap{left:8px;bottom:calc(6px + env(safe-area-inset-bottom));width:116px;height:78px;border-width:2px;opacity:.8}
+    #loc-banner{display:none}
+    #speedo{right:7px;bottom:calc(6px + env(safe-area-inset-bottom));min-width:142px;padding:7px 9px}
+    #speed-val{font-size:27px} #speed-unit{font-size:9px}
+    #diag-grid{grid-template-columns:1fr;gap:2px;margin-top:4px;padding-top:4px;font-size:9px}
+    #mobile-left{left:8px;bottom:calc(96px + env(safe-area-inset-bottom))}
+    #mobile-right{right:8px;bottom:calc(96px + env(safe-area-inset-bottom));grid-template-columns:repeat(2,60px);gap:5px}
+    .touch-key{min-height:37px;font-size:9px;border-radius:9px}
+    #stick-base{width:100px;height:100px} #stick-knob{left:26px;top:26px;width:44px;height:44px}
+    #mobile-run{width:100px;min-height:33px}
+    #big-map-modal{inset:calc(6px + env(safe-area-inset-top)) 6px calc(6px + env(safe-area-inset-bottom));padding:10px;overflow-y:auto}
+    .map-header{gap:8px;align-items:flex-start}.map-header h2{font-size:17px}.map-header p{font-size:10px!important}
+    .tp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:12px}
+    .tp-card{padding:7px}.tp-card h4{font-size:11px}.tp-card p{font-size:9px}
+    #overlay-title{font-size:clamp(36px,10vw,64px);letter-spacing:2px}
+    #overlay-sub{font-size:14px;text-align:center;padding:0 16px}
+    #prompt{max-width:70vw;font-size:11px;padding:7px 10px;bottom:calc(210px + env(safe-area-inset-bottom))}
+    #toast{max-width:88vw;top:95px;padding:8px 10px;font-size:11px}
   }
-  @media (max-height: 500px) and (orientation: landscape) {
-    #radar-wrap { width:112px; height:80px; }
-    #move-cluster { left:10px; bottom:calc(10px + env(safe-area-inset-bottom)); }
-    #joystick { width:92px; height:92px; }
-    #stick { width:38px; height:38px; left:25px; top:25px; }
-    #action-cluster { bottom:calc(10px + env(safe-area-inset-bottom)); grid-template-columns:repeat(3, 56px); }
-    .touch-btn { min-width:48px; min-height:44px; font-size:11px; }
-    #prompt { bottom:calc(110px + env(safe-area-inset-bottom)); }
-    #mobile-extra { top:calc(8px + env(safe-area-inset-top)); }
+  @media (max-height:500px) and (orientation:landscape){
+    #left-panel{width:40vw} #left-panel .toolbar .btn{padding:3px 4px}
+    #mobile-left{left:8px;bottom:calc(8px + env(safe-area-inset-bottom))}
+    #mobile-right{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));grid-template-columns:repeat(4,52px);gap:4px}
+    #stick-base{width:86px;height:86px} #stick-knob{left:21px;top:21px;width:40px;height:40px}
+    #mobile-run{width:86px;min-height:29px} #radar-wrap{width:100px;height:68px}
+    #speedo{right:8px;bottom:8px} #mobile-right .touch-key{min-height:32px;padding:4px 2px}
   }
+
 </style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 </head>
 <body>
+
 <div id="hud">
-  <div id="controls">
-    <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> — Ходьба / Вождение / Крен вертолёта</div>
-    <div><span class="key">Shift</span> — Бег / Снижение вертолёта</div>
-    <div><span class="key">Space</span> — Ручник / Набор высоты</div>
-    <div><span class="key">Q</span> / <span class="key">E</span> — Поворот вертолёта</div>
-    <div><span class="key">F</span> — Сесть в транспорт / Выйти</div>
-    <div><span class="key">V</span> — Сменить камеру</div>
-  </div>
-  <div class="top-right"><div id="stars">★★★★★</div><div class="bar-wrap"><div id="hp-bar"></div></div><div id="vehicle-badge">Пешком</div></div>
-  <div id="prompt">Нажмите <span class="key">F</span> или кнопку «Сесть», чтобы сесть в <span id="prompt-veh"></span></div>
-  <div id="radar-wrap"><canvas id="radar" width="210" height="150"></canvas></div>
-  <div id="speedo"><div id="speed-val">0</div><div id="speed-unit">КМ/Ч | <span id="gear-val">D</span></div></div>
-  <div id="notice">Коснитесь джойстика для движения</div>
-  <div id="mobile-controls">
-    <div id="move-cluster" class="touch-cluster"><div id="joystick" aria-label="Джойстик движения"><div id="stick"></div></div></div>
-    <div id="action-cluster" class="touch-cluster">
-      <button class="touch-btn action" data-key="ShiftLeft">БЕГ<br>↓</button>
-      <button class="touch-btn action" data-key="Space">↑ /<br>РУЧНИК</button>
-      <button class="touch-btn action" data-key="KeyQ">Q<br>↶</button>
-      <button class="touch-btn action" data-key="KeyE">E<br>↷</button>
-      <button class="touch-btn primary" id="enter-exit-btn">СЕСТЬ<br>F</button>
-      <button class="touch-btn primary" id="camera-btn">КАМЕРА<br>V</button>
+  <div id="left-panel">
+    <div class="card">
+      <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> — Ходьба / Руление / Наклон вертолёта</div>
+      <div><span class="key">Space</span> — Прыжок (залезть на вертолёт) / Парашют / Ручник / Шаг-газ вверх</div>
+      <div><span class="key">Shift</span> — Бег / Шаг-газ вниз | <span class="key">Q</span><span class="key">E</span> — Хвостовой винт (рыскание)</div>
+      <div><span class="key">F</span> — Сесть / Выпрыгнуть (в т.ч. в воздухе!) | <span class="key">E</span> — Аттракцион / Гид / Ремонт</div>
+      <div><span class="key">M</span> — Режим полёта (Аркада/Сим) | <span class="key">K</span> — Тест отказа хвостового винта</div>
+      <div><span class="key">P</span> / <span class="key">Tab</span> — Карта и Телепорт | <span class="key">1</span>–<span class="key">0</span> — Спавн 10 авто (лимит пула)</div>
+      <div class="toolbar">
+        <button class="btn" id="btn-weather">Погода: Ясно</button>
+        <button class="btn" id="btn-time">Время: День (14:00)</button>
+        <button class="btn" id="btn-quality">Графика: Высокая</button>
+        <button class="btn" id="btn-map">Карта / Локации (P)</button>
+      </div>
     </div>
-    <div id="mobile-extra"><button class="touch-btn action" data-key="KeyW">ВПЕРЁД</button><button class="touch-btn action" data-key="KeyS">НАЗАД</button></div>
+    <div class="card" id="asset-status" style="border-left-color:#2ecc71;">
+      <span id="status-text">Физика 60 Гц активна · Свободные GLB-модели подгружаются...</span>
+    </div>
+  </div>
+
+  <div class="top-right">
+    <div id="time-weather">14:00 · ЯСНО · ВЕТЕР 4 М/С</div>
+    <div id="money-val">$15,000</div>
+    <div id="stars">★★★★★</div>
+    <div class="bars-row">
+      <div class="bar-wrap" title="Броня"><div id="armor-bar"></div></div>
+      <div class="bar-wrap" title="Здоровье (регенерация до 50%)"><div id="hp-bar"></div></div>
+    </div>
+    <div id="vehicle-badge">Пешком</div>
+    <div id="witness-alert">📞 СВИДЕТЕЛЬ ЗВОНИТ В ПОЛИЦИЮ!</div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="prompt"></div>
+  <div id="loc-banner">📍 Центральный район</div>
+
+  <div id="radar-wrap">
+    <canvas id="radar" width="230" height="165"></canvas>
+  </div>
+
+  <div id="speedo">
+    <div id="speed-val">0</div>
+    <div id="speed-unit">КМ/Ч (×3.6) | <span id="gear-val">D</span></div>
+    <div id="diag-grid">
+      <div class="diag-item"><span>Двигатель:</span><span id="dg-eng" class="diag-ok">100%</span></div>
+      <div class="diag-item"><span>Кузов (FFD):</span><span id="dg-body" class="diag-ok">Цел (0/5)</span></div>
+      <div class="diag-item"><span>Ходовая/Винт:</span><span id="dg-wh" class="diag-ok">4/4 ОК</span></div>
+      <div class="diag-item"><span>Режим/Статус:</span><span id="dg-mode" class="diag-ok">Штатно</span></div>
+    </div>
+  </div>
+  <div id="mobile-controls" aria-label="Сенсорное управление">
+    <div id="mobile-left" class="mobile-cluster">
+      <div id="stick-base" aria-label="Движение"><div id="stick-knob"></div></div>
+      <button id="mobile-run" class="touch-key" data-hold="ShiftLeft">УДЕРЖИВАТЬ · БЕГ</button>
+    </div>
+    <div id="mobile-right" class="mobile-cluster">
+      <button class="touch-key primary" data-hold="Space">ПРЫЖОК<br>РУЧНИК</button>
+      <button class="touch-key primary" data-tap="KeyF">СЕСТЬ<br>ВЫЙТИ</button>
+      <button class="touch-key" data-tap="KeyE">ДЕЙСТВИЕ</button>
+      <button class="touch-key" data-tap="KeyV">КАМЕРА</button>
+      <button class="touch-key" data-tap="KeyP">КАРТА</button>
+      <button class="touch-key" data-tap="Digit1">МАШИНА</button>
+      <button class="touch-key" data-tap="Digit0">ВЕРТОЛЁТ</button>
+      <button class="touch-key" data-tap="KeyL">ПРОЖЕКТОР</button>
+    </div>
   </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script>
-'use strict';
-if (!window.THREE) {
-  document.body.innerHTML = '<div style="padding:24px;color:white;background:#111;font:16px sans-serif;line-height:1.5"><h2>Grand City Sandbox 3D</h2><p>Не удалось загрузить 3D-движок Three.js. Для запуска откройте эту страницу при подключённом интернете и попробуйте ещё раз.</p></div>';
-} else {
-// Mobile-friendly edition of the supplied Grand City Sandbox prototype.
-const IS_MOBILE = matchMedia('(pointer: coarse)').matches || window.innerWidth < 760;
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.FogExp2(0x87ceeb, 0.0014);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 900);
-const renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
-renderer.domElement.className = 'webgl';
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.35 : 1.75));
-renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;
-renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = !IS_MOBILE;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 0.75));
-const sunLight = new THREE.DirectionalLight(0xfff7e6, 0.85);
-sunLight.position.set(160,260,140);
-if (!IS_MOBILE) {
-  sunLight.castShadow = true; sunLight.shadow.mapSize.set(1024,1024);
-  sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=700;
-  const sd=260; Object.assign(sunLight.shadow.camera,{left:-sd,right:sd,top:sd,bottom:-sd});
+
+<!-- Экран Смерти / Ареста -->
+<div id="overlay-screen">
+  <div id="overlay-title">ВЫ РАЗБИЛИСЬ</div>
+  <div id="overlay-sub">Доставка в городскую больницу... (-$500)</div>
+</div>
+
+<!-- Полноэкранная карта и быстрое перемещение по особым локациям ТЗ -->
+<div id="big-map-modal">
+  <div class="map-header">
+    <div>
+      <h2 style="color:#38bdf8;">Карта мегаполиса и Особых локаций (ТЗ Раздел 8)</h2>
+      <p style="font-size:12px;color:#94a3b8;">Выберите локацию для мгновенного перемещения или нажмите P / Tab для закрытия</p>
+    </div>
+    <button class="btn" id="btn-close-map" style="padding:8px 16px;font-size:13px;">Закрыть (P)</button>
+  </div>
+  <div class="tp-grid">
+    <div class="tp-card" data-tp="kremlin">
+      <h4>🏰 Московский Кремль и Красная площадь</h4>
+      <p>Спасская башня с курантами, Храм Василия Блаженного, ГУМ, Мавзолей, Соборная площадь, Царь-колокол и Царь-пушка (пешая зона / вертолёт).</p>
+    </div>
+    <div class="tp-card" data-tp="amusement">
+      <h4>🎡 Парк аттракционов</h4>
+      <p>Рабочее 30-метровое Колесо обозрения с качающимися кабинками (клавиша E — прокатиться) и вращающаяся Карусель с лошадками.</p>
+    </div>
+    <div class="tp-card" data-tp="skate">
+      <h4>🛹 Скейт-парк и BMX-рампы</h4>
+      <p>Бетонная чаша, квотер-пайпы, рейлы для грайнда и скейтборд с трюками (Space — Олли/Кикфлип с начислением очков).</p>
+    </div>
+    <div class="tp-card" data-tp="bridge">
+      <h4>🌉 Большой вантовый мост и Река</h4>
+      <p>Высотный пилон над рекой (высота 38 м) — идеальная точка для проверки прыжка с парашютом или падения в глубокую воду.</p>
+    </div>
+    <div class="tp-card" data-tp="helipad">
+      <h4>🚁 Вертолётная площадка (Falcon-X)</h4>
+      <p>Проверка раскрутки турбины, выхода на высоте 20 м vs 2 м, зацепа на полозьях и отказа хвостового винта (клавиша K).</p>
+    </div>
+    <div class="tp-card" data-tp="crashzone">
+      <h4>💥 Полигон краш-тестов (5 ударов)</h4>
+      <p>Прямая скоростная полоса перед бетонным отбойником для проверки 5 стадий накопительной FFD-деформации бампера на 40 км/ч.</p>
+    </div>
+    <div class="tp-card" data-tp="garage">
+      <h4>🔧 Гараж тюнинга и ремонта (Pay & Spray)</h4>
+      <p>Полное восстановление геометрии кузова, замена оторванных колёс, ремонт двигателя и перекраска ($250).</p>
+    </div>
+    <div class="tp-card" data-tp="hospital">
+      <h4>🏥 Городская больница и Полиция</h4>
+      <p>Точка возрождения после гибели или ареста, восстановление здоровья и брони, патрульный перехватчик.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+// ============================================================================
+// МОДУЛЬ 1: СОБЫТИЙНАЯ ШИНА (EventBus — Раздел 10.2 ТЗ)
+// ============================================================================
+class EventBus {
+  constructor() { this.listeners = {}; }
+  on(event, fn) { (this.listeners[event] = this.listeners[event] || []).push(fn); }
+  emit(event, payload) { (this.listeners[event] || []).forEach(fn => fn(payload)); }
 }
+const bus = new EventBus();
+
+function showToast(msg, duration = 4200) {
+  const el = document.getElementById('toast');
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
+// ============================================================================
+// МОДУЛЬ 2: ПРОСТРАНСТВЕННЫЙ СИНТЕЗАТОР ЗВУКА (Web Audio API — Раздел 10.1 ТЗ)
+// ============================================================================
+class AudioSystem {
+  constructor() {
+    this.ctx = null;
+    this.rotorGain = null;
+    this.rotorOsc = null;
+  }
+  init() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    this.ctx = new AudioCtx();
+    // Турбина / винт вертолёта
+    this.rotorOsc = this.ctx.createOscillator();
+    this.rotorGain = this.ctx.createGain();
+    this.rotorOsc.type = 'sawtooth';
+    this.rotorOsc.frequency.value = 40;
+    this.rotorGain.gain.value = 0.0001;
+    this.rotorOsc.connect(this.rotorGain).connect(this.ctx.destination);
+    this.rotorOsc.start();
+  }
+  updateRotor(rpmRatio, active) {
+    if (!this.ctx || !this.rotorGain) return;
+    const targetGain = active ? Math.min(0.08, rpmRatio * 0.08) : 0.0001;
+    const targetFreq = 32 + rpmRatio * 95;
+    this.rotorGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.1);
+    this.rotorOsc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
+  }
+  playCrash(intensity = 1) {
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(110 * Math.min(1.5, intensity), this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(22, this.ctx.currentTime + 0.35);
+    gain.gain.setValueAtTime(Math.min(0.25, 0.08 * intensity), this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.36);
+  }
+  playChimes() {
+    // Бой курантов Спасской башни Московского Кремля (Раздел 8.1)
+    this.init();
+    if (!this.ctx) return;
+    [523.25, 659.25, 587.33, 392.00, 523.25].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      const t = this.ctx.currentTime + idx * 0.55;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.0008, t + 1.4);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 1.45);
+    });
+  }
+}
+const audio = new AudioSystem();
+window.addEventListener('keydown', () => audio.init(), { once: true });
+
+// ============================================================================
+// МОДУЛЬ 3: СЦЕНА, КАСКАДНЫЙ СВЕТ, ПРОФИЛИ ГРАФИКИ И ПОГОДА (Разделы 6, 7)
+// ============================================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7ec0ee);
+scene.fog = new THREE.FogExp2(0x7ec0ee, 0.0011);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 1200);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const hemiLight = new THREE.HemisphereLight(0xdff9fb, 0x384c3b, 0.65);
+scene.add(hemiLight);
+
+const sunLight = new THREE.DirectionalLight(0xfff4e0, 1.85);
+sunLight.position.set(180, 280, 150);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 850;
+const dShadow = 320;
+sunLight.shadow.camera.left = -dShadow;
+sunLight.shadow.camera.right = dShadow;
+sunLight.shadow.camera.top = dShadow;
+sunLight.shadow.camera.bottom = -dShadow;
+sunLight.shadow.bias = -0.0005;
 scene.add(sunLight);
 
-// 0.1 Procedural image-based lighting for glossy vehicle paint and metal.
-// No external HDR download is needed, and this is safe to skip on older phones.
-function createVehicleEnvironment(){
- try{
-  if(!THREE.PMREMGenerator||THREE.EquirectangularReflectionMapping===undefined)return;
-  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
-  const ctx=canvas.getContext('2d');
-  const sky=ctx.createLinearGradient(0,0,0,256);
-  sky.addColorStop(0,'#152844');sky.addColorStop(.30,'#477da4');sky.addColorStop(.48,'#b7d9e5');sky.addColorStop(.56,'#f4ead5');sky.addColorStop(.68,'#64717b');sky.addColorStop(1,'#1b2028');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,512,256);
-  // A distant skyline gives glossy paint believable dark-light reflections.
-  ctx.fillStyle='rgba(19,35,52,.72)';
-  for(let x=0;x<512;){
-   const width=9+((x*13)%23),height=15+((x*7)%42);
-   ctx.fillRect(x,135-height,width,height);x+=width+3;
-  }
-  // Broad soft-box highlights simulate a bright outdoor studio reflection.
-  [[34,35,66,9,.78],[176,26,38,76,.55],[292,42,90,8,.68],[426,24,26,64,.60]].forEach(([x,y,w,h,alpha])=>{
-   const g=ctx.createLinearGradient(x,y,x+w,y+h);
-   g.addColorStop(0,'rgba(255,255,255,0)');
-   g.addColorStop(.5,'rgba(255,255,255,'+alpha+')');
-   g.addColorStop(1,'rgba(255,255,255,0)');
-   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
-  });
-  const texture=new THREE.CanvasTexture(canvas);
-  texture.mapping=THREE.EquirectangularReflectionMapping;
-  texture.encoding=THREE.sRGBEncoding;
-  const generator=new THREE.PMREMGenerator(renderer);
-  generator.compileEquirectangularShader();
-  const target=generator.fromEquirectangular(texture);
-  scene.environment=target.texture;
-  texture.dispose();generator.dispose();
- }catch(error){console.warn('Vehicle reflections disabled; continuing with standard lighting.',error);}
-}
-createVehicleEnvironment();
-
-// 1. Procedural textures
-function makeBuildingTexture(baseColor, winLitColor) {
-  const c=document.createElement('canvas'); c.width=256; c.height=512;
-  const ctx=c.getContext('2d'); ctx.fillStyle=baseColor; ctx.fillRect(0,0,256,512);
-  ctx.fillStyle='rgba(0,0,0,0.18)'; for(let y=0;y<512;y+=32) ctx.fillRect(0,y,256,4);
-  for(let y=12;y<480;y+=32) for(let x=14;x<240;x+=36){ctx.fillStyle=Math.random()>.35?winLitColor:'#1c2833';ctx.fillRect(x,y,24,18);ctx.strokeStyle='#111';ctx.strokeRect(x,y,24,18);}
-  const tex=new THREE.CanvasTexture(c); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; return tex;
-}
-function makeRoadTexture(){
-  const c=document.createElement('canvas'); c.width=512;c.height=512;const ctx=c.getContext('2d');ctx.fillStyle='#2c3035';ctx.fillRect(0,0,512,512);
-  for(let i=0;i<2200;i++){ctx.fillStyle=Math.random()>.5?'rgba(255,255,255,.03)':'rgba(0,0,0,.06)';ctx.fillRect(Math.random()*512,Math.random()*512,3,3);}
-  ctx.fillStyle='#f1c40f';ctx.fillRect(250,0,4,512);ctx.fillRect(258,0,4,512);ctx.fillStyle='#ecf0f1';for(let y=0;y<512;y+=64){ctx.fillRect(126,y,4,36);ctx.fillRect(382,y,4,36);}
-  const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;return tex;
-}
-function makeClothTexture(jacketColor,shirtColor){const c=document.createElement('canvas');c.width=128;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=jacketColor;ctx.fillRect(0,0,128,128);ctx.fillStyle=shirtColor;ctx.fillRect(42,0,44,128);ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(39,0,3,128);ctx.fillRect(86,0,3,128);return new THREE.CanvasTexture(c);}
-function makeFaceTexture(skinColor){const c=document.createElement('canvas');c.width=64;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle=skinColor;ctx.fillRect(0,0,64,64);ctx.fillStyle='#fff';ctx.fillRect(14,24,10,6);ctx.fillRect(40,24,10,6);ctx.fillStyle='#111';ctx.fillRect(18,25,4,4);ctx.fillRect(44,25,4,4);ctx.fillStyle='#2c1e14';ctx.fillRect(13,20,12,3);ctx.fillRect(39,20,12,3);ctx.fillStyle='#924c4c';ctx.fillRect(24,46,16,4);return new THREE.CanvasTexture(c);}
-
-// 2. World, roads and buildings
-const colliders=[], trafficLights=[], treeRoots=[], cityPlaceholders=[], buildingSlots=[];
-const BLOCK_SIZE=110, ROAD_WIDTH=24, STEP=BLOCK_SIZE+ROAD_WIDTH;
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(1600,1600),new THREE.MeshLambertMaterial({color:0x3a5f38}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=!IS_MOBILE;scene.add(ground);
-const roadMat=new THREE.MeshLambertMaterial({map:makeRoadTexture()});
-const sidewalkMat=new THREE.MeshLambertMaterial({color:0x95a5a6});
-const bldTextures=[makeBuildingTexture('#546e7a','#ffe082'),makeBuildingTexture('#78909c','#fff9c4'),makeBuildingTexture('#8d6e63','#ffecb3'),makeBuildingTexture('#455a64','#b3e5fc'),makeBuildingTexture('#607d8b','#ffe082')];
-function createTree(x,z){const g=new THREE.Group();const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3.2,7),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1.6;g.add(trunk);const lm=new THREE.MeshLambertMaterial({color:0x2e7d32});for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry(2.4-i*.45,3.2,7),lm);crown.position.y=3.6+i*1.4;g.add(crown);}g.position.set(x,0,z);scene.add(g);treeRoots.push(g);}
-function createStreetProp(x,z,rotY,isTrafficLight){const g=new THREE.Group(),pm=new THREE.MeshLambertMaterial({color:0x2c3e50});const pole=new THREE.Mesh(new THREE.CylinderGeometry(.12,.15,6.2,8),pm);pole.position.y=3.1;g.add(pole);if(isTrafficLight){const arm=new THREE.Mesh(new THREE.BoxGeometry(3.2,.15,.15),pm);arm.position.set(1.5,5.8,0);g.add(arm);const box=new THREE.Mesh(new THREE.BoxGeometry(.5,1.4,.5),new THREE.MeshLambertMaterial({color:0x111111}));box.position.set(2.8,5.4,0);g.add(box);const rMat=new THREE.MeshBasicMaterial({color:0xff0000}),yMat=new THREE.MeshBasicMaterial({color:0x332200}),gMat=new THREE.MeshBasicMaterial({color:0x003300}),geo=new THREE.SphereGeometry(.14,8,8);const r=new THREE.Mesh(geo,rMat),y=new THREE.Mesh(geo,yMat),gr=new THREE.Mesh(geo,gMat);r.position.set(2.8,5.8,.26);y.position.set(2.8,5.4,.26);gr.position.set(2.8,5,.26);g.add(r,y,gr);trafficLights.push({rMat,yMat,gMat,phaseOffset:Math.abs(x+z)%2});}else{const sign=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.08,8),new THREE.MeshBasicMaterial({color:0xe74c3c}));sign.rotation.x=Math.PI/2;sign.position.set(0,3.8,0);g.add(sign);const hydrant=new THREE.Mesh(new THREE.CylinderGeometry(.22,.26,.85,8),new THREE.MeshLambertMaterial({color:0xc0392b}));hydrant.position.set(.9,.42,0);g.add(hydrant);}g.position.set(x,0,z);g.rotation.y=rotY;scene.add(g);}
-for(let gx=-3;gx<=3;gx++){const rx=gx*STEP;const rv=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH,1100),roadMat);rv.rotation.x=-Math.PI/2;rv.position.set(rx,.03,0);scene.add(rv);const rh=new THREE.Mesh(new THREE.PlaneGeometry(1100,ROAD_WIDTH),roadMat);rh.rotation.x=-Math.PI/2;rh.rotation.z=Math.PI/2;rh.position.set(0,.04,rx);scene.add(rh);}
-for(let bx=-3;bx<=2;bx++)for(let bz=-3;bz<=2;bz++){
- const cx=bx*STEP+STEP/2,cz=bz*STEP+STEP/2;const sw=new THREE.Mesh(new THREE.BoxGeometry(BLOCK_SIZE,.3,BLOCK_SIZE),sidewalkMat);sw.position.set(cx,.15,cz);scene.add(sw);
- createStreetProp(cx-BLOCK_SIZE/2+1.5,cz-BLOCK_SIZE/2+1.5,0,true);createStreetProp(cx+BLOCK_SIZE/2-1.5,cz+BLOCK_SIZE/2-1.5,Math.PI,true);createStreetProp(cx+BLOCK_SIZE/2-1.5,cz-BLOCK_SIZE/2+1.5,-Math.PI/2,false);
- if(bx===0&&bz===0){const pad=new THREE.Mesh(new THREE.CylinderGeometry(11,11,.4,24),new THREE.MeshLambertMaterial({color:0x34495e}));pad.position.set(cx+28,.35,cz-25);scene.add(pad);const ring=new THREE.Mesh(new THREE.RingGeometry(7.5,8.5,24),new THREE.MeshBasicMaterial({color:0xf1c40f,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(cx+28,.58,cz-25);scene.add(ring);for(let t=-40;t<=40;t+=20){createTree(cx+t,cz+42);createTree(cx-44,cz+t);}continue;}
- const offsets=[[-24,-24],[24,-24],[-24,24],[24,24]];for(const [ox,oz] of offsets){const w=28+Math.random()*10,d=28+Math.random()*10,h=22+Math.random()*55,tex=bldTextures[Math.floor(Math.random()*bldTextures.length)],mat=new THREE.MeshLambertMaterial({map:tex});const bld=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);bld.position.set(cx+ox,h/2+.3,cz+oz);bld.castShadow=!IS_MOBILE;bld.receiveShadow=!IS_MOBILE;cityPlaceholders.push(bld);scene.add(bld);const roof=new THREE.Mesh(new THREE.BoxGeometry(w-2,1.2,d-2),new THREE.MeshLambertMaterial({color:0x263238}));roof.position.set(cx+ox,h+.9,cz+oz);cityPlaceholders.push(roof);scene.add(roof);buildingSlots.push({x:cx+ox,z:cz+oz,w,h,d});colliders.push({x:cx+ox,z:cz+oz,hw:w/2+.8,hd:d/2+.8});}createTree(cx,cz-46);createTree(cx,cz+46);
-}
-
-// 3. Character builder
-function createHuman(cfg={}){const root=new THREE.Group(),skinColor=cfg.skin||'#f1c27d',jacketColor=cfg.jacket||'#1e3799',shirtColor=cfg.shirt||'#fff',pantsColor=cfg.pants||'#2f3640',hairColor=cfg.hair||'#2c1e14';const skinMat=new THREE.MeshLambertMaterial({color:skinColor}),faceMat=new THREE.MeshLambertMaterial({map:makeFaceTexture(skinColor)}),torsoMat=new THREE.MeshLambertMaterial({map:makeClothTexture(jacketColor,shirtColor)}),sleeveMat=new THREE.MeshLambertMaterial({color:jacketColor}),pantsMat=new THREE.MeshLambertMaterial({color:pantsColor}),shoeMat=new THREE.MeshLambertMaterial({color:0x111111});const torso=new THREE.Mesh(new THREE.BoxGeometry(.56,.72,.3),torsoMat);torso.position.y=1.16;root.add(torso);const headGroup=new THREE.Group();headGroup.position.y=1.72;const head=new THREE.Mesh(new THREE.BoxGeometry(.36,.38,.36),[skinMat,skinMat,skinMat,skinMat,faceMat,skinMat]);headGroup.add(head);const hair=new THREE.Mesh(new THREE.BoxGeometry(.39,.14,.39),new THREE.MeshLambertMaterial({color:hairColor}));hair.position.y=.16;headGroup.add(hair);if(cfg.isPolice){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.24,.22,.12,12),new THREE.MeshLambertMaterial({color:0x0a1931}));cap.position.y=.24;headGroup.add(cap);}root.add(headGroup);function makeArm(side){const p=new THREE.Group();p.position.set(side*.38,1.46,0);const upper=new THREE.Mesh(new THREE.BoxGeometry(.18,.52,.18),sleeveMat);upper.position.y=-.22;const hand=new THREE.Mesh(new THREE.BoxGeometry(.15,.16,.15),skinMat);hand.position.y=-.52;p.add(upper,hand);root.add(p);return p;}function makeLeg(side){const p=new THREE.Group();p.position.set(side*.15,.8,0);const leg=new THREE.Mesh(new THREE.BoxGeometry(.22,.68,.22),pantsMat);leg.position.y=-.34;const shoe=new THREE.Mesh(new THREE.BoxGeometry(.23,.14,.32),shoeMat);shoe.position.set(0,-.72,.04);p.add(leg,shoe);root.add(p);return p;}const leftArm=makeArm(-1),rightArm=makeArm(1),leftLeg=makeLeg(-1),rightLeg=makeLeg(1);return{mesh:root,animate(speed,time){if(speed>.1){const a=Math.sin(time*10)*Math.min(speed*.12,.85);leftArm.rotation.x=a;rightArm.rotation.x=-a;leftLeg.rotation.x=-a;rightLeg.rotation.x=a;}else{leftArm.rotation.x*=.85;rightArm.rotation.x*=.85;leftLeg.rotation.x*=.85;rightLeg.rotation.x*=.85;}}};}
-
-// 4. Vehicles
-const VEHICLE_SPECS=[
-{id:'bavaria',name:'Bavaria M5 Sport',type:'car',color:0x1976d2,w:2.1,h:1.35,l:4.7,maxSpeed:44,accel:26,handling:2.7,mass:1.5,spoiler:true},
-{id:'stuttgart',name:'Stuttgart 911 GT',type:'car',color:0xe53935,w:2.15,h:1.2,l:4.5,maxSpeed:52,accel:33,handling:3.1,mass:1.3,spoiler:true},
-{id:'tokyo',name:'Tokyo Drift ZR-350',type:'car',color:0xfdd835,w:2.05,h:1.25,l:4.4,maxSpeed:46,accel:28,handling:3.2,mass:1.35,spoiler:true},
-{id:'detroit',name:'Detroit V8 Muscle',type:'car',color:0x212121,w:2.15,h:1.35,l:4.9,maxSpeed:45,accel:30,handling:2.4,mass:1.7,spoiler:false},
-{id:'luxor',name:'Luxor G-Wagen SUV',type:'suv',color:0x37474f,w:2.25,h:1.85,l:4.8,maxSpeed:38,accel:22,handling:2.3,mass:2.4,spoiler:false},
-{id:'titan',name:'Titan Hauler 6x6 (Тягач)',type:'truck',color:0x8e24aa,w:2.6,h:3.1,l:7.4,maxSpeed:31,accel:15,handling:1.7,mass:5.5},
-{id:'goliath',name:'Goliath Dump Truck (Самосвал)',type:'dump',color:0xf57c00,w:2.8,h:3,l:7.8,maxSpeed:28,accel:14,handling:1.6,mass:6.5},
-{id:'police',name:'Vanguard Police Interceptor',type:'police',color:0x111111,w:2.1,h:1.4,l:4.8,maxSpeed:47,accel:29,handling:2.8,mass:1.6},
-{id:'moto',name:'Street Moto R1',type:'moto',color:0x00e676,w:.85,h:1.15,l:2.3,maxSpeed:49,accel:35,handling:3.6,mass:.6},
-{id:'heli',name:'Falcon-X Helicopter',type:'heli',color:0x263238,w:2.6,h:2.6,l:8.2,maxSpeed:55,accel:25,handling:2.2,mass:3}
-];
-const vehicles=[];
-function spawnVehicle(spec,x,z,rotY=0,isAI=false,isCop=false){const root=new THREE.Group(),bodyTilt=new THREE.Group();root.add(bodyTilt);const mainMat=new THREE.MeshPhongMaterial({color:spec.color,shininess:85}),darkMat=new THREE.MeshLambertMaterial({color:0x1a1a1a}),chromeMat=new THREE.MeshPhongMaterial({color:0xdddddd,shininess:100}),glassMat=new THREE.MeshPhongMaterial({color:0x112233,transparent:true,opacity:.72,shininess:100}),lightFrontMat=new THREE.MeshBasicMaterial({color:0xffffcc}),lightBrakeMat=new THREE.MeshBasicMaterial({color:0x770000});const wheels=[];let mainRotor=null,tailRotor=null,sirenRed=null,sirenBlue=null;
- if(spec.type==='heli'){const cabin=new THREE.Mesh(new THREE.BoxGeometry(2.3,1.9,4.2),mainMat);cabin.position.set(0,1.7,.4);const glass=new THREE.Mesh(new THREE.BoxGeometry(2.15,1.3,2.1),glassMat);glass.position.set(0,1.8,1.65);const tail=new THREE.Mesh(new THREE.BoxGeometry(.65,.75,4.6),mainMat);tail.position.set(0,1.9,-3.6);const fin=new THREE.Mesh(new THREE.BoxGeometry(.2,1.5,1.1),mainMat);fin.position.set(0,2.6,-5.6);[-1,1].forEach(s=>{const skid=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,4.4,8),darkMat);skid.rotation.x=Math.PI/2;skid.position.set(s*1.1,.15,.4);const st1=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.9,6),darkMat);st1.position.set(s, .55,1.3);const st2=st1.clone();st2.position.z=-.6;bodyTilt.add(skid,st1,st2);});mainRotor=new THREE.Group();mainRotor.position.set(0,2.85,.4);mainRotor.add(new THREE.Mesh(new THREE.BoxGeometry(9.6,.05,.35),darkMat),new THREE.Mesh(new THREE.BoxGeometry(.35,.05,9.6),darkMat));tailRotor=new THREE.Group();tailRotor.position.set(.22,2.6,-5.7);tailRotor.add(new THREE.Mesh(new THREE.BoxGeometry(.06,1.7,.18),darkMat));bodyTilt.add(cabin,glass,tail,fin,mainRotor,tailRotor);
- }else{const heavy=spec.type==='truck'||spec.type==='dump',chassisH=heavy?1.1:.65;const chassis=new THREE.Mesh(new THREE.BoxGeometry(spec.w,chassisH,spec.l),mainMat);chassis.position.y=.65;bodyTilt.add(chassis);
-  if(spec.type==='truck'){const cab=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.1,1.85,2.8),mainMat);cab.position.set(0,1.9,1.5);const wind=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.04,.85,1.6),glassMat);wind.position.set(0,2.15,2.18);const grille=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.1,.15),chromeMat);grille.position.set(0,1.15,spec.l/2+.05);[-1,1].forEach(s=>{const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,2.8,8),chromeMat);pipe.position.set(s*(spec.w/2-.05),2.3,.1);bodyTilt.add(pipe);});bodyTilt.add(cab,wind,grille);
-  }else if(spec.type==='dump'){const cab=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.15,1.65,2.2),mainMat);cab.position.set(0,1.8,2.3);const wind=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.08,.8,1.2),glassMat);wind.position.set(0,2,2.95);const bed=new THREE.Mesh(new THREE.BoxGeometry(spec.w+.1,1.55,4.6),new THREE.MeshLambertMaterial({color:0xd35400}));bed.position.set(0,1.85,-1.3);bodyTilt.add(cab,wind,bed);
-  }else if(spec.type==='moto'){const seat=new THREE.Mesh(new THREE.BoxGeometry(.55,.45,1.1),darkMat);seat.position.set(0,1.05,-.1);const wind=new THREE.Mesh(new THREE.BoxGeometry(.55,.4,.5),glassMat);wind.position.set(0,1.22,.65);bodyTilt.add(seat,wind);
-  }else{const cabLen=spec.type==='suv'?spec.l*.68:spec.l*.52,cabH=spec.type==='suv'?.85:.62,cabColor=spec.type==='police'?0xffffff:spec.color;const cab=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.24,cabH,cabLen),new THREE.MeshPhongMaterial({color:cabColor,shininess:80}));cab.position.set(0,.95+cabH/2,-.15);const glass=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.18,cabH-.12,cabLen+.06),glassMat);glass.position.copy(cab.position);bodyTilt.add(cab,glass);if(spec.spoiler){const sp=new THREE.Mesh(new THREE.BoxGeometry(spec.w-.1,.08,.38),darkMat);sp.position.set(0,1.22,-spec.l/2+.25);bodyTilt.add(sp);}if(spec.type==='police'){sirenRed=new THREE.Mesh(new THREE.BoxGeometry(.45,.16,.25),new THREE.MeshBasicMaterial({color:0xff0000}));sirenRed.position.set(-.25,1.72,-.1);sirenBlue=new THREE.Mesh(new THREE.BoxGeometry(.45,.16,.25),new THREE.MeshBasicMaterial({color:0x0055ff}));sirenBlue.position.set(.25,1.72,-.1);bodyTilt.add(sirenRed,sirenBlue);}}
-  const hw=spec.w*.36,hl=new THREE.Mesh(new THREE.BoxGeometry(.32,.18,.1),lightFrontMat);hl.position.set(-hw,.72,spec.l/2+.02);const hr=hl.clone();hr.position.x=hw;const tl=new THREE.Mesh(new THREE.BoxGeometry(.36,.18,.1),lightBrakeMat);tl.position.set(-hw,.72,-spec.l/2-.02);const tr=tl.clone();tr.position.x=hw;bodyTilt.add(hl,hr,tl,tr);
-  const wr=heavy?.56:.42,ww=spec.type==='moto'?.25:.34,wg=new THREE.CylinderGeometry(wr,wr,ww,12);wg.rotateZ(Math.PI/2);const rg=new THREE.CylinderGeometry(wr*.58,wr*.58,ww+.02,10);rg.rotateZ(Math.PI/2);const zpos=heavy?[spec.l*.34,-spec.l*.15,-spec.l*.36]:[spec.l*.33,-spec.l*.33];zpos.forEach((wz,idx)=>{(spec.type==='moto'?[0]:[-1,1]).forEach(s=>{const gr=new THREE.Group();gr.position.set(s*(spec.w/2),wr,wz);const tire=new THREE.Mesh(wg,darkMat),rim=new THREE.Mesh(rg,chromeMat);gr.add(tire,rim);root.add(gr);wheels.push({group:gr,tire,isFront:idx===0});});});
- }
- const fallbackChildren=bodyTilt.children.slice();root.position.set(x,0,z);root.rotation.y=rotY;scene.add(root);const v={spec,mesh:root,bodyTilt,wheels,fallbackChildren,assetVisual:null,mainRotor,tailRotor,sirenRed,sirenBlue,brakeMat:lightBrakeMat,speed:0,steer:0,vy:0,pitch:0,roll:0,isAI,isCop};vehicles.push(v);return v;}
-const startX=48,startZ=82;
-VEHICLE_SPECS.forEach((s,i)=>{if(s.type==='heli')spawnVehicle(s,95,42,-Math.PI/4);else{const row=Math.floor(i/5),col=i%5;spawnVehicle(s,32+col*8.5,62-row*16,0);}});
-for(let i=0;i<(IS_MOBILE?10:18);i++){const isCop=i<(IS_MOBILE?2:4),spec=isCop?VEHICLE_SPECS.find(s=>s.id==='police'):VEHICLE_SPECS[i%7],gx=Math.floor(Math.random()*5)-2,gz=Math.floor(Math.random()*5)-2;spawnVehicle(spec,gx*STEP+5.5,gz*STEP+(Math.random()*60-30),0,true,isCop);}
-
-
-// 4.5. CC0 GLB asset upgrade. Procedural models stay visible if any asset fails to load.
-const ASSET_BASE='./assets/kenney/';
-const assetLoader=THREE.GLTFLoader?new THREE.GLTFLoader():null;
-const gltfPromises=new Map();
-function loadGltf(path){
- if(!assetLoader)return Promise.reject(new Error('GLTFLoader is unavailable'));
- if(!gltfPromises.has(path))gltfPromises.set(path,(()=>{
-  if(path.startsWith('@vehicle/')){
-   const url='./assets/vehicles/'+path.slice('@vehicle/'.length);
-   return new Promise((resolve,reject)=>assetLoader.load(url,gltf=>resolve(gltf.scene),undefined,reject));
-  }
-  return (async()=>{
-   const response=await fetch(ASSET_BASE+path+'.b64');
-   if(!response.ok)throw new Error('Asset request failed ('+response.status+'): '+path);
-   const encoded=(await response.text()).replace(/\s/g,'');
-   const binary=atob(encoded),bytes=new Uint8Array(binary.length);
-   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-   return await new Promise((resolve,reject)=>assetLoader.parse(bytes.buffer,'',gltf=>resolve(gltf.scene),reject));
-  })();
- })());
- return gltfPromises.get(path);
-}
-function fittedAsset(template,w,h,d,x=0,z=0,groundY=0,uniform=true,yaw=0){
- const wrapper=new THREE.Group(),model=template.clone(true);model.rotation.y=yaw;wrapper.add(model);model.updateMatrixWorld(true);
- const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3());
- let sx=w/Math.max(size.x,.001),sy=h/Math.max(size.y,.001),sz=d/Math.max(size.z,.001);
- if(uniform){const fit=Math.min(sx,sy,sz);sx=sy=sz=fit;}else{sy=Math.min(sy,(sx+sz)*.5);}
- wrapper.scale.set(sx,sy,sz);
- wrapper.position.set(x-(box.min.x+box.max.x)*.5*sx,groundY-box.min.y*sy,z-(box.min.z+box.max.z)*.5*sz);
- model.traverse(o=>{if(o.isMesh){o.castShadow=!IS_MOBILE;o.receiveShadow=!IS_MOBILE;}});
- return {wrapper,model};
-}
-const CITY_MODEL_PATHS=[
- 'packs/city-kit-commercial/building-a.glb',
- 'packs/city-kit-commercial/building-c.glb',
- 'packs/city-kit-commercial/building-f.glb',
- 'packs/city-kit-commercial/building-g.glb',
- 'packs/city-kit-commercial/building-h.glb',
- 'packs/city-kit-commercial/building-skyscraper-a.glb',
- 'packs/city-kit-commercial/building-skyscraper-c.glb',
- 'packs/city-kit-commercial/building-skyscraper-e.glb'
-];
-const TREE_MODEL_PATHS=[
- 'packs/nature-kit/tree-detailed.glb',
- 'packs/nature-kit/tree-oak.glb',
- 'packs/nature-kit/tree-pinetalla-detailed.glb',
- 'packs/nature-kit/tree-pinetallb-detailed.glb'
-];
-const VEHICLE_MODEL_PATHS={
- bavaria:{primary:'@vehicle/sedan.glb',fallback:'packs/car-kit/sedan.glb'},
- stuttgart:{primary:'@vehicle/sports-car.glb',fallback:'packs/car-kit/sedan-sports.glb'},
- tokyo:{primary:'@vehicle/hatchback.glb',fallback:'packs/car-kit/hatchback-sports.glb'},
- detroit:{primary:'@vehicle/classic-car.glb',fallback:'packs/car-kit/sedan-sports.glb'},
- luxor:{primary:'@vehicle/suv.glb',fallback:'packs/car-kit/suv-luxury.glb'},
- titan:{primary:'@vehicle/dump-truck.glb',fallback:'packs/car-kit/truck-flat.glb'},
- goliath:{primary:'@vehicle/garbage-truck.glb',fallback:'packs/car-kit/garbage-truck.glb'},
- police:{primary:'@vehicle/police-car.glb',fallback:'packs/car-kit/police.glb'}
+// Управление погодой, временем суток и профилями качества (Разделы 6.3, 7.2)
+const worldState = {
+  timeOfDay: 14.0, // 0..24 ч
+  weatherIndex: 0, // 0: Ясно, 1: Дождь (мокрый асфальт), 2: Туман, 3: Снег
+  weatherNames: ['ЯСНО', 'ДОЖДЬ (МОКРАЯ ДОРОГА)', 'ГУСТОЙ ТУМАН', 'СНЕГОПАД'],
+  gripMultiplier: 1.0,
+  windVec: new THREE.Vector3(3.8, 0, 1.6),
+  qualityIndex: 2, // 0: Низкая, 1: Средняя, 2: Высокая, 3: Ультра
+  qualityNames: ['Низкая', 'Средняя', 'Высокая', 'Ультра'],
+  nightEmissives: []
 };
-async function upgradeWorldAssets(){
- const vehiclePaths=Object.values(VEHICLE_MODEL_PATHS).flatMap(v=>[v.primary,v.fallback]);
- const allPaths=[...new Set([...CITY_MODEL_PATHS,...TREE_MODEL_PATHS,...vehiclePaths])];
- const notice=document.getElementById('notice');if(IS_MOBILE){notice.textContent='Загружаю дополнительные 3D-модели…';notice.style.display='block';}
- const loaded=new Map();
- await Promise.allSettled(allPaths.map(async path=>{try{loaded.set(path,await loadGltf(path));}catch(err){console.warn('Не удалось загрузить модель '+path,err);}}));
- // Replace the distant box-built skyline with reusable detailed city-kit buildings.
- const buildings=CITY_MODEL_PATHS.map(p=>loaded.get(p)).filter(Boolean);
- if(buildings.length){
-  cityPlaceholders.forEach(o=>{scene.remove(o);if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});
-  buildingSlots.forEach((slot,i)=>{const template=buildings[(i*7+Math.floor(i/3))%buildings.length];const item=fittedAsset(template,slot.w,Math.min(slot.h,68),slot.d,slot.x,slot.z,.3,false);scene.add(item.wrapper);});
- }
- // Replace low-detail cone trees with CC0 nature models, while preserving each tree's position.
- const trees=TREE_MODEL_PATHS.map(p=>loaded.get(p)).filter(Boolean);
- if(trees.length)treeRoots.forEach((root,i)=>{
-  root.children.forEach(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});
-  root.clear();const template=trees[i%trees.length],sizeHeight=6.2+(i%4)*.65;const item=fittedAsset(template,6.2,sizeHeight,6.2,0,0,0,true);root.add(item.wrapper);
- });
- // Real vehicle meshes retain the existing driving physics and touch controls.
- let carsUpgraded=0,legacyCars=0;
- for(const vehicle of vehicles){
-  const config=VEHICLE_MODEL_PATHS[vehicle.spec.id];if(!config)continue;
-  let template=loaded.get(config.primary),usedLegacy=false;
-  if(!template){template=loaded.get(config.fallback);usedLegacy=!!template;}
-  if(!template)continue;
-  const item=fittedAsset(template,vehicle.spec.w,vehicle.spec.h,vehicle.spec.l,0,0,0,true,config.yaw||0);
-  vehicle.bodyTilt.add(item.wrapper);vehicle.assetVisual=item.wrapper;vehicle.assetWheels=[];
-  item.model.traverse(o=>{
-   if(o.isMesh&&/(wheel|tire|tyre)/i.test(o.name)){
-    vehicle.assetWheels.push({node:o,front:/(front|_fl|_fr|wheel.?f)/i.test(o.name),baseX:o.rotation.x,baseY:o.rotation.y,spin:0});
-   }
+
+// Система осадков (Дождь / Снег)
+const precipGeo = new THREE.BufferGeometry();
+const PRECIP_COUNT = 2500;
+const precipPos = new Float32Array(PRECIP_COUNT * 3);
+for (let i = 0; i < PRECIP_COUNT; i++) {
+  precipPos[i * 3] = (Math.random() - 0.5) * 180;
+  precipPos[i * 3 + 1] = Math.random() * 60;
+  precipPos[i * 3 + 2] = (Math.random() - 0.5) * 180;
+}
+precipGeo.setAttribute('position', new THREE.BufferAttribute(precipPos, 3));
+const precipMat = new THREE.PointsMaterial({ color: 0xb3e5fc, size: 0.35, transparent: true, opacity: 0.75 });
+const precipPoints = new THREE.Points(precipGeo, precipMat);
+precipPoints.visible = false;
+scene.add(precipPoints);
+
+// ============================================================================
+// МОДУЛЬ 4: ТЕКСТУРЫ, 3D-ТРАВА, ВОДА И ГОРОДСКАЯ СЕТКА (Раздел 6)
+// ============================================================================
+function makeRoadTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#25282c';
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 4500; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.06)';
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+  }
+  ctx.fillStyle = '#f9ca24';
+  ctx.fillRect(249, 0, 4, 512);
+  ctx.fillRect(259, 0, 4, 512);
+  ctx.fillStyle = '#ecf0f1';
+  for (let y = 0; y < 512; y += 64) {
+    ctx.fillRect(126, y, 4, 34);
+    ctx.fillRect(382, y, 4, 34);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function makeCobbleTexture() {
+  // Брусчатка Красной площади
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#4a4440';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#2d2926';
+  ctx.lineWidth = 2;
+  for (let y = 0; y < 256; y += 16) {
+    const off = (y / 16) % 2 === 0 ? 0 : 12;
+    for (let x = -12; x < 256; x += 24) {
+      ctx.fillStyle = Math.random() > 0.5 ? '#544d48' : '#433d39';
+      ctx.fillRect(x + off, y, 22, 14);
+      ctx.strokeRect(x + off, y, 22, 14);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(22, 22);
+  return tex;
+}
+
+function makeBrickTexture() {
+  // Красный кирпич стен Московского Кремля
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#8b261d';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#a33227';
+  for (let y = 0; y < 256; y += 16) {
+    const off = (y / 16) % 2 === 0 ? 0 : 16;
+    for (let x = -16; x < 256; x += 32) {
+      ctx.fillRect(x + off + 1, y + 1, 29, 13);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(8, 3);
+  return tex;
+}
+
+function makeFacadeTexture(wallColor, winColor) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = wallColor;
+  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  for (let y = 0; y < 512; y += 64) ctx.fillRect(0, y, 512, 6);
+  for (let y = 14; y < 500; y += 64) {
+    for (let x = 18; x < 490; x += 60) {
+      const isLit = Math.random() > 0.4;
+      ctx.fillStyle = '#111820';
+      ctx.fillRect(x - 3, y - 3, 42, 42);
+      ctx.fillStyle = isLit ? winColor : '#1e2f3d';
+      ctx.fillRect(x, y, 36, 36);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+const colliders = [];   // AABB препятствия { x, z, hw, hd, h, isBollard, name }
+const platforms = [];   // Поверхности с высотой { x, z, hw, hd, y } (рампы, мост, крыши)
+const trafficLights = [];
+const lawnZones = [];
+const interactiveSpots = []; // { x, z, r, label, action }
+
+const BLOCK_SIZE = 110;
+const ROAD_WIDTH = 24;
+const STEP = BLOCK_SIZE + ROAD_WIDTH; // 134
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(2400, 2400),
+  new THREE.MeshLambertMaterial({ color: 0x2b5329 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const roadMat = new THREE.MeshStandardMaterial({ map: makeRoadTexture(), roughness: 0.8, metalness: 0.1 });
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x95a5a6, roughness: 0.9 });
+const concreteMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.85 });
+const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.45, metalness: 0.65 });
+
+const facadeMaterials = [
+  new THREE.MeshStandardMaterial({ map: makeFacadeTexture('#546e7a', '#ffe082'), roughness: 0.5, metalness: 0.25 }),
+  new THREE.MeshStandardMaterial({ map: makeFacadeTexture('#78909c', '#fff9c4'), roughness: 0.45, metalness: 0.3 }),
+  new THREE.MeshStandardMaterial({ map: makeFacadeTexture('#8d6e63', '#ffecb3'), roughness: 0.7, metalness: 0.1 }),
+  new THREE.MeshStandardMaterial({ map: makeFacadeTexture('#37474f', '#b3e5fc'), roughness: 0.35, metalness: 0.45 })
+];
+
+function createTree(x, z, type = 0) {
+  const g = new THREE.Group();
+  const trunkMat = new THREE.MeshStandardMaterial({ color: type === 1 ? 0xdcdde1 : 0x4e342e, roughness: 0.9 });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.44, 3.5, 7), trunkMat);
+  trunk.position.y = 1.75;
+  trunk.castShadow = true;
+  g.add(trunk);
+
+  if (type === 2) {
+    // Ель у Кремлёвской стены
+    const pineMat = new THREE.MeshLambertMaterial({ color: 0x1b5e20 });
+    for (let i = 0; i < 3; i++) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(2.1 - i * 0.45, 2.8, 8), pineMat);
+      cone.position.y = 3.2 + i * 1.45;
+      cone.castShadow = true;
+      g.add(cone);
+    }
+  } else {
+    // Клён / Берёза
+    const crownMat = new THREE.MeshLambertMaterial({ color: type === 1 ? 0x689f38 : 0x2e7d32 });
+    const mainCrown = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1), crownMat);
+    mainCrown.position.set(0, 4.4, 0);
+    mainCrown.castShadow = true;
+    g.add(mainCrown);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+
+// Строим дорожную сетку и кварталы
+for (let gx = -3; gx <= 3; gx++) {
+  const rx = gx * STEP;
+  const rV = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, 1300), roadMat);
+  rV.rotation.x = -Math.PI / 2; rV.position.set(rx, 0.03, 0); rV.receiveShadow = true;
+  scene.add(rV);
+
+  const rH = new THREE.Mesh(new THREE.PlaneGeometry(1300, ROAD_WIDTH), roadMat);
+  rH.rotation.x = -Math.PI / 2; rH.rotation.z = Math.PI / 2; rH.position.set(0, 0.04, rx); rH.receiveShadow = true;
+  scene.add(rH);
+}
+
+for (let bx = -2; bx <= 1; bx++) {
+  for (let bz = -2; bz <= 1; bz++) {
+    const cx = bx * STEP + STEP / 2;
+    const cz = bz * STEP + STEP / 2;
+
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(BLOCK_SIZE, 0.28, BLOCK_SIZE), sidewalkMat);
+    sw.position.set(cx, 0.14, cz);
+    sw.receiveShadow = true;
+    scene.add(sw);
+
+    // Светофоры на перекрёстках
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 6, 8), darkMetalMat);
+    pole.position.set(cx - BLOCK_SIZE / 2 + 1.5, 3, cz - BLOCK_SIZE / 2 + 1.5);
+    const rMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const gMat = new THREE.MeshBasicMaterial({ color: 0x003300 });
+    const rLight = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), rMat);
+    rLight.position.set(cx - BLOCK_SIZE / 2 + 1.5, 5.6, cz - BLOCK_SIZE / 2 + 1.8);
+    const gLight = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), gMat);
+    gLight.position.set(cx - BLOCK_SIZE / 2 + 1.5, 5.1, cz - BLOCK_SIZE / 2 + 1.8);
+    scene.add(pole, rLight, gLight);
+    trafficLights.push({ rMat, gMat, phaseOffset: Math.abs(bx + bz) % 2 });
+
+    // Квартал (0,0): Стартовый парк, Вертолётная площадка, Гараж ремонта, Полигон 5 ударов
+    if (bx === 0 && bz === 0) {
+      lawnZones.push({ x: cx, z: cz + 26, w: 88, d: 38 });
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(11, 11.5, 0.45, 32), darkMetalMat);
+      pad.position.set(cx + 30, 0.38, cz - 24);
+      scene.add(pad);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(7.2, 8.2, 32), new THREE.MeshBasicMaterial({ color: 0xffca28, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(cx + 30, 0.62, cz - 24);
+      scene.add(ring);
+
+      // Бокс Гаража ремонта и тюнинга (Pay & Spray — Раздел 9)
+      const gar = new THREE.Mesh(new THREE.BoxGeometry(16, 6.5, 14), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+      gar.position.set(cx - 32, 3.4, cz - 32);
+      const garSign = new THREE.Mesh(new THREE.BoxGeometry(14, 1.4, 0.4), new THREE.MeshBasicMaterial({ color: 0x00e676 }));
+      garSign.position.set(cx - 32, 7.2, cz - 25);
+      scene.add(gar, garSign);
+      interactiveSpots.push({
+        x: cx - 32, z: cz - 20, r: 9,
+        label: 'Нажмите <span class="key">E</span> — Отремонтировать кузов, колёса и двигатель ($250)',
+        action: () => repairCurrentVehicle()
+      });
+
+      // Бетонный отбойник для приёмки 5 стадий ударов бампера (Раздел 4.3)
+      const crashWall = new THREE.Mesh(new THREE.BoxGeometry(14, 4.5, 3.5), new THREE.MeshStandardMaterial({ color: 0xd32f2f }));
+      crashWall.position.set(cx - 5, 2.4, cz - 44);
+      crashWall.castShadow = true;
+      scene.add(crashWall);
+      colliders.push({ x: cx - 5, z: cz - 44, hw: 7.2, hd: 2.0, h: 5, name: 'Краш-барьер' });
+      continue;
+    }
+
+    // Квартал (-1, 0): Больница и Полицейский участок (Раздел 5.3, 8.4)
+    if (bx === -1 && bz === 0) {
+      // Больница
+      const hosp = new THREE.Mesh(new THREE.BoxGeometry(36, 26, 30), new THREE.MeshStandardMaterial({ color: 0xecf0f1 }));
+      hosp.position.set(cx - 22, 13.3, cz);
+      hosp.castShadow = true;
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(2.2, 7, 0.5), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
+      crossV.position.set(cx - 22, 22, cz + 15.2);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(7, 2.2, 0.5), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
+      crossH.position.set(cx - 22, 22, cz + 15.2);
+      scene.add(hosp, crossV, crossH);
+      colliders.push({ x: cx - 22, z: cz, hw: 18.5, hd: 15.5, h: 26 });
+
+      // Полицейский участок
+      const pol = new THREE.Mesh(new THREE.BoxGeometry(36, 22, 30), new THREE.MeshStandardMaterial({ color: 0x1e3799 }));
+      pol.position.set(cx + 22, 11.3, cz);
+      pol.castShadow = true;
+      scene.add(pol);
+      colliders.push({ x: cx + 22, z: cz, hw: 18.5, hd: 15.5, h: 22 });
+      continue;
+    }
+
+    // Квартал (1, 0) отдаём под Парк аттракционов и Скейт-парк (Разделы 8.2, 8.3)
+    if (bx === 1 && bz === 0) continue;
+
+    // Обычные городские кварталы со зданиями и балконами
+    lawnZones.push({ x: cx, z: cz - 46, w: 90, d: 8 });
+    const offsets = [[-24, -22], [24, -22], [-24, 22], [24, 22]];
+    offsets.forEach(([ox, oz], idx) => {
+      const w = 28, d = 26, h = 26 + ((Math.abs(bx * 5 + bz * 7 + idx * 3) % 6) * 8);
+      const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), facadeMaterials[idx % facadeMaterials.length]);
+      bld.position.set(cx + ox, h / 2 + 0.3, cz + oz);
+      bld.castShadow = true;
+      bld.receiveShadow = true;
+      scene.add(bld);
+      colliders.push({ x: cx + ox, z: cz + oz, hw: w / 2 + 0.8, hd: d / 2 + 0.8, h });
+    });
+    createTree(cx - 26, cz - 46, 0);
+    createTree(cx + 26, cz - 46, 1);
+  }
+}
+
+// ============================================================================
+// МОДУЛЬ 5: ОСОБЫЕ ЛОКАЦИИ (Кремль, Парк аттракционов, Скейт-парк, Река и Мост)
+// ============================================================================
+
+// --- 5.1 МОСКОВСКИЙ КРЕМЛЬ И КРАСНАЯ ПЛОЩАДЬ (Раздел 8.1 ТЗ — Приоритет 1) ---
+const KREMLIN_X = 0, KREMLIN_Z = -390;
+function buildMoscowKremlin() {
+  const kGroup = new THREE.Group();
+  const cobbleMat = new THREE.MeshStandardMaterial({ map: makeCobbleTexture(), roughness: 0.88 });
+  const brickMat = new THREE.MeshStandardMaterial({ map: makeBrickTexture(), roughness: 0.82 });
+  const whiteStoneMat = new THREE.MeshStandardMaterial({ color: 0xf5f6fa, roughness: 0.65 });
+  const goldMat = new THREE.MeshPhysicalMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.15, clearcoat: 1.0 });
+  const greenRoofMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.5 });
+  const rubyStarMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+
+  // 1. Брусчатка Красной площади и территории Кремля (без обрывов геометрии!)
+  const redSquare = new THREE.Mesh(new THREE.BoxGeometry(240, 0.32, 260), cobbleMat);
+  redSquare.position.set(KREMLIN_X, 0.16, KREMLIN_Z);
+  redSquare.receiveShadow = true;
+  scene.add(redSquare);
+
+  // Функция постройки участка Кремлёвской стены с зубцами «ласточкин хвост» (мерлонами)
+  function addKremlinWall(x1, z1, x2, z2, hasGate = false) {
+    const dx = x2 - x1, dz = z2 - z1;
+    const len = Math.hypot(dx, dz);
+    const angle = Math.atan2(dx, dz);
+    const wallH = 12.5, wallThick = 3.8;
+
+    if (hasGate) {
+      // Оставляем широкий пешеходный проход (ворота Спасской башни) с защитными тумбами-боллардами от машин
+      const segLen = (len - 14) / 2;
+      [-1, 1].forEach(side => {
+        const sx = (x1 + x2) / 2 + side * Math.sin(angle) * (segLen / 2 + 7);
+        const sz = (z1 + z2) / 2 + side * Math.cos(angle) * (segLen / 2 + 7);
+        const wMesh = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallH, segLen), brickMat);
+        wMesh.position.set(sx, wallH / 2, sz);
+        wMesh.rotation.y = angle;
+        wMesh.castShadow = true;
+        scene.add(wMesh);
+        colliders.push({ x: sx, z: sz, hw: Math.abs(Math.cos(angle)) * 2 + Math.abs(Math.sin(angle)) * (segLen / 2), hd: Math.abs(Math.sin(angle)) * 2 + Math.abs(Math.cos(angle)) * (segLen / 2), h: wallH });
+      });
+      // Болларды у ворот: пешеход проходит свободно, автомобиль блокируется (Раздел 8.1)
+      for (let b = -4.5; b <= 4.5; b += 3.0) {
+        const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 1.1, 10), darkMetalMat);
+        bollard.position.set((x1 + x2) / 2 + b, 0.55, (z1 + z2) / 2);
+        scene.add(bollard);
+        colliders.push({ x: (x1 + x2) / 2 + b, z: (z1 + z2) / 2, hw: 0.3, hd: 0.3, h: 1.2, isBollard: true });
+      }
+      return;
+    }
+
+    const wMesh = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallH, len), brickMat);
+    wMesh.position.set((x1 + x2) / 2, wallH / 2, (z1 + z2) / 2);
+    wMesh.rotation.y = angle;
+    wMesh.castShadow = true;
+    wMesh.receiveShadow = true;
+
+    // Зубцы «ласточкин хвост» по верху стены
+    const numMerlons = Math.floor(len / 3.4);
+    for (let i = 0; i < numMerlons; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(wallThick * 0.85, 2.1, 2.2), brickMat);
+      m.position.set(0, wallH / 2 + 1.05, -len / 2 + 1.7 + i * 3.4);
+      wMesh.add(m);
+    }
+    scene.add(wMesh);
+    colliders.push({
+      x: (x1 + x2) / 2, z: (z1 + z2) / 2,
+      hw: Math.abs(Math.sin(angle)) * (len / 2) + 2.2,
+      hd: Math.abs(Math.cos(angle)) * (len / 2) + 2.2,
+      h: wallH + 2
+    });
+  }
+
+  // Строим периметр стен Кремля: Южная стена (с воротами на Красную площадь), Северная, Западная и Восточная
+  addKremlinWall(-85, KREMLIN_Z + 35, 85, KREMLIN_Z + 35, true);
+  addKremlinWall(-85, KREMLIN_Z - 95, 85, KREMLIN_Z - 95, false);
+  addKremlinWall(-85, KREMLIN_Z - 95, -85, KREMLIN_Z + 35, false);
+  addKremlinWall(85, KREMLIN_Z - 95, 85, KREMLIN_Z + 35, false);
+
+  // Функция постройки башен Кремля (Спасская, Никольская, Троицкая, Угловые Арсенальная и Беклемишевская)
+  function addKremlinTower(tx, tz, isSpasskaya = false) {
+    const tGroup = new THREE.Group();
+    const baseW = isSpasskaya ? 14 : 10.5;
+    const baseH = isSpasskaya ? 22 : 17;
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseW), brickMat);
+    base.position.y = baseH / 2;
+    base.castShadow = true;
+    tGroup.add(base);
+
+    // Белокаменный декор яруса
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(baseW + 0.6, 1.8, baseW + 0.6), whiteStoneMat);
+    trim.position.y = baseH + 0.5;
+    tGroup.add(trim);
+
+    // Восьмерик и зелёный шатёр
+    const oct = new THREE.Mesh(new THREE.CylinderGeometry(baseW * 0.42, baseW * 0.48, 8, 8), brickMat);
+    oct.position.y = baseH + 4.5;
+    const tent = new THREE.Mesh(new THREE.ConeGeometry(baseW * 0.44, 14, 8), greenRoofMat);
+    tent.position.y = baseH + 15.5;
+    tent.castShadow = true;
+    tGroup.add(oct, tent);
+
+    // Рубиновая кремлёвская звезда на вершине шатра
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(1.45, 0), rubyStarMat);
+    star.position.y = baseH + 23.2;
+    tGroup.add(star);
+
+    if (isSpasskaya) {
+      // Сквозная арка ворот в Спасской башне + золотые часы-куранты на 4 стороны
+      base.position.y = baseH / 2 + 3.5;
+      base.scale.y = (baseH - 7) / baseH;
+      [-1, 1].forEach(s => {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(3.2, 7.5, baseW), brickMat);
+        pillar.position.set(s * 5.4, 3.75, 0);
+        tGroup.add(pillar);
+      });
+      // Циферблаты курантов
+      [[0, baseW / 2 + 0.15, 0], [0, -baseW / 2 - 0.15, Math.PI]].forEach(([cx, cz, ry]) => {
+        const dial = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.2, 24), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+        dial.rotation.x = Math.PI / 2;
+        dial.position.set(cx, baseH - 3.5, cz);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.22, 8, 24), goldMat);
+        rim.position.set(cx, baseH - 3.5, cz + (cz > 0 ? 0.12 : -0.12));
+        tGroup.add(dial, rim);
+      });
+    } else {
+      colliders.push({ x: tx, z: tz, hw: baseW / 2, hd: baseW / 2, h: baseH + 20 });
+    }
+
+    tGroup.position.set(tx, 0, tz);
+    scene.add(tGroup);
+  }
+
+  // Главная Спасская башня по центру ворот и угловые/стеновые башни
+  addKremlinTower(KREMLIN_X, KREMLIN_Z + 35, true);
+  addKremlinTower(-85, KREMLIN_Z + 35, false);
+  addKremlinTower(85, KREMLIN_Z + 35, false);
+  addKremlinTower(-85, KREMLIN_Z - 95, false);
+  addKremlinTower(85, KREMLIN_Z - 95, false);
+  addKremlinTower(-85, KREMLIN_Z - 30, false);
+  addKremlinTower(85, KREMLIN_Z - 30, false);
+
+  // Голубые ели вдоль Кремлёвской стены
+  for (let ex = -65; ex <= 65; ex += 18) {
+    if (Math.abs(ex) < 16) continue;
+    createTree(KREMLIN_X + ex, KREMLIN_Z + 41, 2);
+  }
+
+  // 2. МАВЗОЛЕЙ и ЛОБНОЕ МЕСТО на Красной площади
+  const mausoleum = new THREE.Group();
+  const graniteMat = new THREE.MeshStandardMaterial({ color: 0x6d1b1b, roughness: 0.3, metalness: 0.2 });
+  [[18, 3.2, 14, 1.6], [14, 2.4, 10, 4.4], [10, 2.0, 7, 6.6], [6, 1.6, 4.5, 8.4]].forEach(([w, h, d, y]) => {
+    const tier = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), graniteMat);
+    tier.position.y = y;
+    tier.castShadow = true;
+    mausoleum.add(tier);
   });
-  // The old procedural wheels are attached to the vehicle root, not to its new GLB body.
-  // Hide them only when the imported model already contains its own wheels.
-  if(vehicle.assetWheels.length)vehicle.wheels.forEach(w=>{w.group.visible=false;});
-  vehicle.fallbackChildren.forEach(o=>{o.visible=false;});
-  carsUpgraded++;if(usedLegacy)legacyCars++;
- }
- console.info('CC0 vehicle upgrade:',{loaded:loaded.size,total:allPaths.length,buildings:buildings.length,trees:trees.length,cars:carsUpgraded,legacyCars});
- if(IS_MOBILE){notice.textContent=loaded.size===allPaths.length?'3D-модели подключены':'Часть 3D-моделей недоступна';notice.style.display='block';setTimeout(()=>{notice.style.display='none';},2600);}
+  mausoleum.position.set(KREMLIN_X - 28, 0.3, KREMLIN_Z + 50);
+  scene.add(mausoleum);
+  colliders.push({ x: KREMLIN_X - 28, z: KREMLIN_Z + 50, hw: 9.5, hd: 7.5, h: 10 });
+
+  // Лобное место
+  const lobnoe = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.8, 1.8, 24), whiteStoneMat);
+  lobnoe.position.set(KREMLIN_X + 18, 1.1, KREMLIN_Z + 78);
+  scene.add(lobnoe);
+
+  // 3. ПОКРОВСКИЙ СОБОР (Храм Василия Блаженного) с разноцветными куполами (Раздел 8.1)
+  const stBasil = new THREE.Group();
+  const sbBase = new THREE.Mesh(new THREE.BoxGeometry(28, 12, 28), brickMat);
+  sbBase.position.y = 6;
+  sbBase.castShadow = true;
+  stBasil.add(sbBase);
+
+  // Центральный шатёр и 8 разноцветных луковичных глав вокруг него
+  const centralTower = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 4.8, 22, 8), brickMat);
+  centralTower.position.y = 21;
+  const centralTent = new THREE.Mesh(new THREE.ConeGeometry(3.4, 14, 8), goldMat);
+  centralTent.position.y = 38;
+  const centralOnion = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 16), goldMat);
+  centralOnion.scale.set(1, 1.35, 1);
+  centralOnion.position.y = 46;
+  stBasil.add(centralTower, centralTent, centralOnion);
+
+  const domeColors = [0xe53935, 0x1e88e5, 0x43a047, 0xfdd835, 0x8e24aa, 0xfb8c00, 0x00acc1, 0xd81b60];
+  for (let i = 0; i < 8; i++) {
+    const ang = (i * Math.PI) / 4;
+    const r = i % 2 === 0 ? 9.5 : 11.5;
+    const drumH = i % 2 === 0 ? 15 : 12;
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.4, drumH, 12), whiteStoneMat);
+    drum.position.set(Math.cos(ang) * r, 12 + drumH / 2, Math.sin(ang) * r);
+    const onion = new THREE.Mesh(
+      new THREE.SphereGeometry(2.8, 16, 16),
+      new THREE.MeshPhysicalMaterial({ color: domeColors[i], roughness: 0.25, metalness: 0.3, clearcoat: 0.8 })
+    );
+    onion.scale.set(1, 1.3, 1);
+    onion.position.set(Math.cos(ang) * r, 12 + drumH + 2.2, Math.sin(ang) * r);
+    onion.castShadow = true;
+    stBasil.add(drum, onion);
+  }
+  stBasil.position.set(KREMLIN_X, 0.3, KREMLIN_Z + 108);
+  scene.add(stBasil);
+  colliders.push({ x: KREMLIN_X, z: KREMLIN_Z + 108, hw: 14.5, hd: 14.5, h: 48 });
+
+  // 4. Здание ГУМа вдоль восточной стороны Красной площади
+  const gum = new THREE.Mesh(new THREE.BoxGeometry(22, 18, 72), new THREE.MeshStandardMaterial({ map: makeFacadeTexture('#d7ccc8', '#ffe082'), roughness: 0.6 }));
+  gum.position.set(KREMLIN_X + 64, 9.3, KREMLIN_Z + 72);
+  gum.castShadow = true;
+  scene.add(gum);
+  colliders.push({ x: KREMLIN_X + 64, z: KREMLIN_Z + 72, hw: 11.5, hd: 36.5, h: 19 });
+
+  // 5. ВНУТРИ КРЕМЛЯ: Соборная площадь, Успенский собор, Колокольня Ивана Великого, Царь-колокол и Царь-пушка
+  const uspensky = new THREE.Group();
+  const uBody = new THREE.Mesh(new THREE.BoxGeometry(26, 18, 22), whiteStoneMat);
+  uBody.position.y = 9;
+  uBody.castShadow = true;
+  uspensky.add(uBody);
+  [[-6, -5], [6, -5], [-6, 5], [6, 5], [0, 0]].forEach(([dx, dz], idx) => {
+    const isCenter = idx === 4;
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(isCenter ? 2.8 : 2.0, isCenter ? 2.8 : 2.0, isCenter ? 7 : 5, 14), whiteStoneMat);
+    drum.position.set(dx, 18 + (isCenter ? 3.5 : 2.5), dz);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(isCenter ? 3.3 : 2.4, 16, 16), goldMat);
+    dome.scale.set(1, 1.25, 1);
+    dome.position.set(dx, 18 + (isCenter ? 8.2 : 6.2), dz);
+    uspensky.add(drum, dome);
+  });
+  uspensky.position.set(KREMLIN_X - 24, 0.3, KREMLIN_Z - 35);
+  scene.add(uspensky);
+  colliders.push({ x: KREMLIN_X - 24, z: KREMLIN_Z - 35, hw: 13.5, hd: 11.5, h: 30 });
+
+  // Колокольня Ивана Великого (высотная доминанта Соборной площади)
+  const ivanBell = new THREE.Group();
+  const t1 = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5.2, 22, 8), whiteStoneMat); t1.position.y = 11;
+  const t2 = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.2, 16, 8), whiteStoneMat); t2.position.y = 30;
+  const tDome = new THREE.Mesh(new THREE.SphereGeometry(3.8, 16, 16), goldMat);
+  tDome.scale.set(1, 1.3, 1); tDome.position.y = 40.5;
+  ivanBell.add(t1, t2, tDome);
+  ivanBell.position.set(KREMLIN_X + 18, 0.3, KREMLIN_Z - 32);
+  scene.add(ivanBell);
+  colliders.push({ x: KREMLIN_X + 18, z: KREMLIN_Z - 32, hw: 5.5, hd: 5.5, h: 45 });
+
+  // Царь-колокол на постаменте и Царь-пушка
+  const tsarBell = new THREE.Mesh(new THREE.ConeGeometry(2.8, 4.2, 18), new THREE.MeshStandardMaterial({ color: 0x3e2723, metalness: 0.8, roughness: 0.3 }));
+  tsarBell.position.set(KREMLIN_X + 26, 2.4, KREMLIN_Z - 24);
+  const tsarCannon = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 4.6, 14), new THREE.MeshStandardMaterial({ color: 0x263238, metalness: 0.85, roughness: 0.25 }));
+  tsarCannon.rotation.x = Math.PI / 2.3;
+  tsarCannon.position.set(KREMLIN_X + 12, 1.6, KREMLIN_Z - 18);
+  scene.add(tsarBell, tsarCannon);
+
+  // Интерактивный аудио-гид на Красной площади и Соборной площади (Раздел 8.1)
+  interactiveSpots.push({
+    x: KREMLIN_X, z: KREMLIN_Z + 44, r: 9,
+    label: 'Нажмите <span class="key">E</span> — Прослушать бой курантов Спасской башни и аудио-гид по Кремлю',
+    action: () => {
+      audio.playChimes();
+      showToast('🔔 <b>Аудио-гид (Московский Кремль):</b> Перед вами Спасская башня (1491 г.), Покровский собор и вход на Соборную площадь к Царь-колоколу и Успенскому собору. Проход открыт пешком!', 6500);
+    }
+  });
 }
-if(assetLoader)upgradeWorldAssets().catch(err=>console.warn('Не удалось применить 3D-модели; оставляю резервную графику.',err));
-else console.warn('GLTFLoader is missing; using procedural models.');
+buildMoscowKremlin();
 
-// 5. Pedestrians
-const pedestrians=[],jackets=['#c0392b','#2980b9','#27ae60','#8e44ad','#d35400','#34495e'],shirts=['#ecf0f1','#f1c40f','#1abc9c','#e74c3c'];
-for(let i=0;i<(IS_MOBILE?18:40);i++){const isPolice=i<Math.min(6,IS_MOBILE?3:6),human=createHuman({jacket:isPolice?'#0a1931':jackets[i%jackets.length],shirt:isPolice?'#3498db':shirts[i%shirts.length],pants:isPolice?'#0a1931':'#2c3e50',isPolice}),angle=Math.random()*Math.PI*2,dist=25+Math.random()*240;human.mesh.position.set(Math.cos(angle)*dist,.3,Math.sin(angle)*dist);human.mesh.rotation.y=Math.random()*Math.PI*2;scene.add(human.mesh);pedestrians.push({human,mesh:human.mesh,dir:human.mesh.rotation.y,speed:2.4+Math.random()*1.2,isPolice,alive:true,timer:Math.random()*5});}
+// --- 5.2 ПАРК АТТРАКЦИОНОВ (30м Колесо обозрения и Карусель) И СКЕЙТ-ПАРК (Разделы 8.2, 8.3) ---
+const PARK_X = STEP + STEP / 2; // 201
+const PARK_Z = STEP / 2;        // 67
+let ferrisWheelRing = null;
+const ferrisCabins = [];
+let carouselPlatform = null;
+let ridingFerrisCabin = null;
 
-// 6. Player, input and vehicle entry
-const playerHuman=createHuman({jacket:'#111111',shirt:'#e74c3c',pants:'#1e3799'});playerHuman.mesh.position.set(startX,.3,startZ);scene.add(playerHuman.mesh);
-const player={inVehicle:null,hp:100,wanted:0,wantedDecayTimer:0,camMode:0};
-const keys=Object.create(null);
-function setKey(code,down){keys[code]=down;}
-window.addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();keys[e.code]=true;if(e.repeat)return;if(e.code==='KeyF')toggleVehicle();if(e.code==='KeyV')player.camMode=(player.camMode+1)%2;},{passive:false});
-window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
-function addWanted(amount){player.wanted=Math.min(5,Math.max(player.wanted,amount));player.wantedDecayTimer=25;updateStarsHUD();}
-function updateStarsHUD(){const el=document.getElementById('stars');let html='';for(let i=1;i<=5;i++)html+=`<span class="${i<=player.wanted?'star-active':''}">★</span>`;el.innerHTML=html;}
-function toggleVehicle(){if(player.inVehicle){const v=player.inVehicle;playerHuman.mesh.position.set(v.mesh.position.x-Math.cos(v.mesh.rotation.y)*(v.spec.w/2+1.2),Math.max(.3,v.mesh.position.y),v.mesh.position.z+Math.sin(v.mesh.rotation.y)*(v.spec.w/2+1.2));playerHuman.mesh.visible=true;player.inVehicle=null;document.getElementById('vehicle-badge').textContent='Пешком';document.getElementById('speedo').style.display='none';document.getElementById('enter-exit-btn').innerHTML='СЕСТЬ<br>F';}else{let closest=null,minDist=6.5;vehicles.forEach(v=>{const dist=v.mesh.position.distanceTo(playerHuman.mesh.position);if(dist<minDist){minDist=dist;closest=v;}});if(closest){player.inVehicle=closest;closest.isAI=false;playerHuman.mesh.visible=false;document.getElementById('vehicle-badge').textContent=closest.spec.name;document.getElementById('speedo').style.display='block';document.getElementById('prompt').style.display='none';document.getElementById('enter-exit-btn').innerHTML='ВЫЙТИ<br>F';if(closest.isCop)addWanted(2);}else{const notice=document.getElementById('notice');notice.textContent='Подойдите ближе к транспорту';notice.style.display='block';setTimeout(()=>notice.style.display='none',1400);}}}
-function checkBuildingCollision(x,z,radius){for(const c of colliders){if(Math.abs(x-c.x)<c.hw+radius&&Math.abs(z-c.z)<c.hd+radius)return true;}return false;}
+function buildAmusementAndSkatePark() {
+  // 1. КОЛЕСО ОБОЗРЕНИЯ (диаметр 30 м, качающиеся кабинки — Раздел 8.2)
+  const fwCenterY = 18.5;
+  const fwX = PARK_X - 24, fwZ = PARK_Z - 22;
 
-// 7. Mobile joystick and on-screen buttons
-const joystick=document.getElementById('joystick'),stick=document.getElementById('stick');let joyPointer=null,joyOrigin=null;
-function updateJoystick(e){if(!joyOrigin)return;const dx=e.clientX-joyOrigin.x,dy=e.clientY-joyOrigin.y,max=34,dist=Math.hypot(dx,dy),f=dist>max?max/dist:1,x=dx*f,y=dy*f;stick.style.transform=`translate(${x}px,${y}px)`;const nx=x/max,ny=y/max;setKey('KeyA',nx<-.28);setKey('KeyD',nx>.28);setKey('KeyW',ny<-.28);setKey('KeyS',ny>.28);}
-function releaseJoystick(){joyPointer=null;joyOrigin=null;stick.style.transform='translate(0,0)';['KeyW','KeyA','KeyS','KeyD'].forEach(k=>setKey(k,false));}
-joystick.addEventListener('pointerdown',e=>{e.preventDefault();joyPointer=e.pointerId;const r=joystick.getBoundingClientRect();joyOrigin={x:r.left+r.width/2,y:r.top+r.height/2};try{joystick.setPointerCapture(e.pointerId);}catch(_){}updateJoystick(e);});
-joystick.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer){e.preventDefault();updateJoystick(e);}});
-joystick.addEventListener('pointerup',e=>{if(e.pointerId===joyPointer)releaseJoystick();});joystick.addEventListener('pointercancel',releaseJoystick);joystick.addEventListener('lostpointercapture',releaseJoystick);
-document.querySelectorAll('[data-key]').forEach(btn=>{const code=btn.dataset.key;const down=e=>{e.preventDefault();setKey(code,true);btn.classList.add('pressed');};const up=e=>{e.preventDefault();setKey(code,false);btn.classList.remove('pressed');};btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('lostpointercapture',up);btn.addEventListener('contextmenu',e=>e.preventDefault());});
-document.getElementById('enter-exit-btn').addEventListener('click',toggleVehicle);
-document.getElementById('camera-btn').addEventListener('click',()=>player.camMode=(player.camMode+1)%2);
+  // Опорные стойки
+  [-2.4, 2.4].forEach(sideZ => {
+    const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 22, 10), darkMetalMat);
+    legL.position.set(fwX - 6, 10.5, fwZ + sideZ);
+    legL.rotation.z = -0.28;
+    const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 22, 10), darkMetalMat);
+    legR.position.set(fwX + 6, 10.5, fwZ + sideZ);
+    legR.rotation.z = 0.28;
+    scene.add(legL, legR);
+  });
 
-// 8. Radar
-const radarCanvas=document.getElementById('radar'),rCtx=radarCanvas.getContext('2d');
-function drawRadar(){const w=radarCanvas.width,h=radarCanvas.height;rCtx.fillStyle='#1b262c';rCtx.fillRect(0,0,w,h);const target=player.inVehicle?player.inVehicle.mesh:playerHuman.mesh,px=target.position.x,pz=target.position.z,scale=IS_MOBILE?.55:.7;rCtx.save();rCtx.translate(w/2,h/2);rCtx.rotate(target.rotation.y-Math.PI);rCtx.fillStyle='#2f3640';for(let bx=-3;bx<=2;bx++)for(let bz=-3;bz<=2;bz++){const cx=(bx*STEP+STEP/2-px)*scale,cz=(bz*STEP+STEP/2-pz)*scale;rCtx.fillRect(cx-BLOCK_SIZE*scale/2,cz-BLOCK_SIZE*scale/2,BLOCK_SIZE*scale,BLOCK_SIZE*scale);}vehicles.forEach(v=>{if(v===player.inVehicle)return;const vx=(v.mesh.position.x-px)*scale,vz=(v.mesh.position.z-pz)*scale;if(Math.abs(vx)<w/2&&Math.abs(vz)<h/2){rCtx.fillStyle=v.isCop?(Math.floor(performance.now()/200)%2?'#ff3333':'#3388ff'):'#f1c40f';rCtx.fillRect(vx-2.5,vz-2.5,5,5);}});rCtx.fillStyle='#2ecc71';pedestrians.forEach(p=>{if(!p.alive)return;const hx=(p.mesh.position.x-px)*scale,hz=(p.mesh.position.z-pz)*scale;if(Math.abs(hx)<w/2&&Math.abs(hz)<h/2)rCtx.fillRect(hx-1,hz-1,2,2);});rCtx.restore();rCtx.fillStyle='#00e5ff';rCtx.beginPath();rCtx.moveTo(w/2,h/2-7);rCtx.lineTo(w/2-5,h/2+5);rCtx.lineTo(w/2+5,h/2+5);rCtx.closePath();rCtx.fill();}
+  ferrisWheelRing = new THREE.Group();
+  ferrisWheelRing.position.set(fwX, fwCenterY, fwZ);
+  const rim1 = new THREE.Mesh(new THREE.TorusGeometry(15, 0.35, 10, 36), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
+  rim1.position.z = 1.6;
+  const rim2 = rim1.clone();
+  rim2.position.z = -1.6;
+  ferrisWheelRing.add(rim1, rim2);
 
-// 9. Game loop
-const clock=new THREE.Clock();
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),elapsed=clock.getElapsedTime();const cycle=Math.floor(elapsed/6)%2;trafficLights.forEach(t=>{const green=cycle===t.phaseOffset;t.rMat.color.setHex(green?0x330000:0xff0000);t.gMat.color.setHex(green?0x00ff44:0x003300);});
- if(player.wanted>0){player.wantedDecayTimer-=dt;if(player.wantedDecayTimer<=0){player.wanted=Math.max(0,player.wanted-1);player.wantedDecayTimer=20;updateStarsHUD();}}
- if(!player.inVehicle){let moveSpeed=0;const maxWalk=keys.ShiftLeft||keys.ShiftRight?10.5:5.5;if(keys.KeyW||keys.ArrowUp)moveSpeed=maxWalk;if(keys.KeyS||keys.ArrowDown)moveSpeed=-4;if(keys.KeyA||keys.ArrowLeft)playerHuman.mesh.rotation.y+=3.2*dt;if(keys.KeyD||keys.ArrowRight)playerHuman.mesh.rotation.y-=3.2*dt;const nx=playerHuman.mesh.position.x+Math.sin(playerHuman.mesh.rotation.y)*moveSpeed*dt,nz=playerHuman.mesh.position.z+Math.cos(playerHuman.mesh.rotation.y)*moveSpeed*dt;if(!checkBuildingCollision(nx,nz,.5)){playerHuman.mesh.position.x=nx;playerHuman.mesh.position.z=nz;}playerHuman.animate(Math.abs(moveSpeed),elapsed);let near=null,minDist=6.5;vehicles.forEach(v=>{const d=v.mesh.position.distanceTo(playerHuman.mesh.position);if(d<minDist){minDist=d;near=v;}});const pr=document.getElementById('prompt');if(near){pr.style.display='block';document.getElementById('prompt-veh').textContent=near.spec.name;}else pr.style.display='none';
- }else{const v=player.inVehicle,s=v.spec;if(s.type==='heli'){const lift=(keys.Space?14:0)-((keys.ShiftLeft||keys.ShiftRight)?12:0);v.vy=THREE.MathUtils.lerp(v.vy,lift,3*dt);v.mesh.position.y=Math.max(0,v.mesh.position.y+v.vy*dt);const inFly=v.mesh.position.y>.4;if(inFly){const fwd=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),side=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),yaw=(keys.KeyQ?1:0)-(keys.KeyE?1:0);v.speed=THREE.MathUtils.lerp(v.speed,fwd*s.maxSpeed,1.8*dt);v.mesh.rotation.y+=(yaw*1.8+side*.9)*dt;v.pitch=THREE.MathUtils.lerp(v.pitch,fwd*.26,4*dt);v.roll=THREE.MathUtils.lerp(v.roll,side*.32,4*dt);v.mesh.position.x+=Math.sin(v.mesh.rotation.y)*v.speed*dt;v.mesh.position.z+=Math.cos(v.mesh.rotation.y)*v.speed*dt;}else{v.speed*=.9;v.pitch*=.85;v.roll*=.85;}v.bodyTilt.rotation.x=v.pitch;v.bodyTilt.rotation.z=v.roll;if(v.mainRotor)v.mainRotor.rotation.y+=(inFly?26:10)*dt;if(v.tailRotor)v.tailRotor.rotation.x+=(inFly?30:10)*dt;
- }else{let throttle=0;if(keys.KeyW||keys.ArrowUp)throttle=1;if(keys.KeyS||keys.ArrowDown)throttle=-1;const handbrake=!!keys.Space;v.brakeMat.color.setHex(throttle<0||handbrake?0xff1111:0x660000);if(throttle!==0&&!handbrake)v.speed+=throttle*(throttle>0?s.accel:s.accel*.75)*dt;else{const drag=handbrake?32:8.5;if(Math.abs(v.speed)>.2)v.speed-=Math.sign(v.speed)*drag*dt;else v.speed=0;}v.speed=THREE.MathUtils.clamp(v.speed,-s.maxSpeed*.38,s.maxSpeed);const steerInput=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);v.steer=THREE.MathUtils.lerp(v.steer,steerInput,7*dt);if(Math.abs(v.speed)>.4){const factor=Math.min(1,Math.abs(v.speed)/8),sign=Math.sign(v.speed);v.mesh.rotation.y+=v.steer*s.handling*factor*sign*(handbrake?1.45:1)*dt;}v.bodyTilt.rotation.z=THREE.MathUtils.lerp(v.bodyTilt.rotation.z,-v.steer*(v.speed/s.maxSpeed)*.14,8*dt);v.bodyTilt.rotation.x=THREE.MathUtils.lerp(v.bodyTilt.rotation.x,-throttle*.045,6*dt);v.wheels.forEach(w=>{w.tire.rotation.x+=(v.speed/.45)*dt;if(w.isFront)w.group.rotation.y=v.steer*.42;});
-  if(v.assetWheels)v.assetWheels.forEach(w=>{w.spin+=(v.speed/.45)*dt;w.node.rotation.x=w.baseX+w.spin;if(w.front)w.node.rotation.y=w.baseY+v.steer*.42;});
-  const nx=v.mesh.position.x+Math.sin(v.mesh.rotation.y)*v.speed*dt,nz=v.mesh.position.z+Math.cos(v.mesh.rotation.y)*v.speed*dt;if(!checkBuildingCollision(nx,nz,s.w*.6)){v.mesh.position.x=nx;v.mesh.position.z=nz;}else v.speed=-v.speed*.35;}document.getElementById('speed-val').textContent=Math.round(Math.abs(v.speed)*3.2);document.getElementById('gear-val').textContent=s.type==='heli'?'ALT '+Math.round(v.mesh.position.y)+'M':(v.speed<-.5?'R':'D');}
- const targetPos=(player.inVehicle?player.inVehicle.mesh:playerHuman.mesh).position;
- vehicles.forEach(v=>{if(v.sirenRed&&v.sirenBlue){const active=(v.isCop&&player.wanted>0)||v===player.inVehicle;if(active){const flash=Math.floor(elapsed*8)%2===0;v.sirenRed.material.color.setHex(flash?0xff0000:0x330000);v.sirenBlue.material.color.setHex(flash?0x002244:0x0088ff);}}if(!v.isAI)return;if(v.isCop&&player.wanted>0){const dx=targetPos.x-v.mesh.position.x,dz=targetPos.z-v.mesh.position.z,ang=Math.atan2(dx,dz);let diff=ang-v.mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff< -Math.PI)diff+=Math.PI*2;v.mesh.rotation.y+=Math.sign(diff)*Math.min(Math.abs(diff),2.5*dt);v.speed=THREE.MathUtils.lerp(v.speed,32,2*dt);}else v.speed=16;const nx=v.mesh.position.x+Math.sin(v.mesh.rotation.y)*v.speed*dt,nz=v.mesh.position.z+Math.cos(v.mesh.rotation.y)*v.speed*dt;if(!checkBuildingCollision(nx,nz,2)){v.mesh.position.x=nx;v.mesh.position.z=nz;}else v.mesh.rotation.y+=Math.PI/2;if(player.inVehicle&&player.inVehicle!==v&&player.inVehicle.mesh.position.y<2){const dist=v.mesh.position.distanceTo(player.inVehicle.mesh.position);if(dist<3.6){player.inVehicle.mesh.position.x+=(player.inVehicle.mesh.position.x-v.mesh.position.x)*.3;player.inVehicle.mesh.position.z+=(player.inVehicle.mesh.position.z-v.mesh.position.z)*.3;if(Math.abs(player.inVehicle.speed)>12)addWanted(v.isCop?2:1);}}});
- pedestrians.forEach(p=>{if(!p.alive)return;p.timer-=dt;if(p.timer<=0){p.dir+=(Math.random()-.5)*1.5;p.timer=3+Math.random()*4;}const nx=p.mesh.position.x+Math.sin(p.dir)*p.speed*dt,nz=p.mesh.position.z+Math.cos(p.dir)*p.speed*dt;if(!checkBuildingCollision(nx,nz,.6)){p.mesh.position.x=nx;p.mesh.position.z=nz;p.mesh.rotation.y=p.dir;}else p.dir+=Math.PI;p.human.animate(p.speed,elapsed);if(player.inVehicle&&player.inVehicle.mesh.position.y<1.5&&Math.abs(player.inVehicle.speed)>6&&p.mesh.position.distanceTo(player.inVehicle.mesh.position)<2.2){p.alive=false;p.mesh.rotation.x=-Math.PI/2;p.mesh.position.y=.2;addWanted(p.isPolice?3:1);}});
- const target=player.inVehicle?player.inVehicle.mesh:playerHuman.mesh,isHeli=player.inVehicle&&player.inVehicle.spec.type==='heli',big=player.inVehicle&&(player.inVehicle.spec.type==='truck'||player.inVehicle.spec.type==='dump'),dist=player.camMode===1?18:(isHeli?15:big?13.5:player.inVehicle?10:5.5),height=player.camMode===1?8:(isHeli?6:big?5.2:player.inVehicle?3.6:2.4),idealX=target.position.x-Math.sin(target.rotation.y)*dist,idealZ=target.position.z-Math.cos(target.rotation.y)*dist,idealY=target.position.y+height;camera.position.lerp(new THREE.Vector3(idealX,idealY,idealZ),Math.min(1,8*dt));camera.lookAt(target.position.x,target.position.y+1.4,target.position.z);drawRadar();renderer.render(scene,camera);
+  const cabinColors = [0xff1744, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9, 0xff9100];
+  for (let i = 0; i < 12; i++) {
+    const ang = (i * Math.PI * 2) / 12;
+    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 30, 6), concreteMat);
+    spoke.rotation.z = ang;
+    ferrisWheelRing.add(spoke);
+
+    const cabinPivot = new THREE.Group();
+    cabinPivot.position.set(Math.cos(ang) * 15, Math.sin(ang) * 15, 0);
+    const cabMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 2.6, 2.4),
+      new THREE.MeshStandardMaterial({ color: cabinColors[i % cabinColors.length], roughness: 0.3 })
+    );
+    cabMesh.position.y = -1.4;
+    cabinPivot.add(cabMesh);
+    ferrisWheelRing.add(cabinPivot);
+    ferrisCabins.push(cabinPivot);
+  }
+  scene.add(ferrisWheelRing);
+
+  interactiveSpots.push({
+    x: fwX, z: fwZ + 6, r: 9,
+    label: 'Нажмите <span class="key">E</span> — Сесть в кабинку 30-метрового Колеса обозрения / Выйти',
+    action: () => {
+      if (ridingFerrisCabin) {
+        ridingFerrisCabin = null;
+        playerHuman.mesh.position.set(fwX, 0.3, fwZ + 8);
+        showToast('Вы сошли с Колеса обозрения.');
+      } else {
+        if (player.inVehicle) toggleVehicle();
+        ridingFerrisCabin = ferrisCabins[0];
+        showToast('🎡 Вы в кабинке 30-метрового Колеса обозрения! Наслаждайтесь панорамой города и Кремля. Нажмите E для выхода.');
+      }
+    }
+  });
+
+  // 2. КАРУСЕЛЬ С ЛОШАДКАМИ (Раздел 8.2)
+  const carX = PARK_X + 24, carZ = PARK_Z - 22;
+  carouselPlatform = new THREE.Group();
+  carouselPlatform.position.set(carX, 0.4, carZ);
+  const baseDisc = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 7.8, 0.5, 24), new THREE.MeshStandardMaterial({ color: 0xfbc02d }));
+  const roofCone = new THREE.Mesh(new THREE.ConeGeometry(8.2, 3.6, 24), new THREE.MeshStandardMaterial({ color: 0xe53935 }));
+  roofCone.position.y = 5.4;
+  const centerPole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 5.2, 16), new THREE.MeshBasicMaterial({ color: 0xfff59d }));
+  centerPole.position.y = 2.6;
+  carouselPlatform.add(baseDisc, roofCone, centerPole);
+
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI * 2) / 8;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.8, 8), new THREE.MeshBasicMaterial({ color: 0xffd700 }));
+    pole.position.set(Math.cos(a) * 5.5, 2.4, Math.sin(a) * 5.5);
+    const horse = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 1.5), new THREE.MeshStandardMaterial({ color: i % 2 ? 0xffffff : 0xff80ab }));
+    horse.position.set(Math.cos(a) * 5.5, 1.8, Math.sin(a) * 5.5);
+    horse.rotation.y = -a;
+    carouselPlatform.add(pole, horse);
+  }
+  scene.add(carouselPlatform);
+
+  // 3. СКЕЙТ-ПАРК (Бетонные рампы, чаша, рейл и трюки — Раздел 8.3)
+  const skX = PARK_X, skZ = PARK_Z + 26;
+  const skateFloor = new THREE.Mesh(new THREE.BoxGeometry(76, 0.35, 36), new THREE.MeshStandardMaterial({ color: 0x607d8b, roughness: 0.6 }));
+  skateFloor.position.set(skX, 0.2, skZ);
+  scene.add(skateFloor);
+
+  // Две рампы по краям и металлический рейл для грайнда в центре
+  [-24, 24].forEach(rx => {
+    const ramp = new THREE.Mesh(new THREE.BoxGeometry(14, 2.6, 24), concreteMat);
+    ramp.position.set(skX + rx, 1.3, skZ);
+    ramp.rotation.z = rx < 0 ? -0.22 : 0.22;
+    scene.add(ramp);
+    platforms.push({ x: skX + rx, z: skZ, hw: 7, hd: 12, y: 2.2 });
+  });
+  const grindRail = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 18, 8), new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.9 }));
+  grindRail.rotation.z = Math.PI / 2;
+  grindRail.position.set(skX, 1.1, skZ);
+  scene.add(grindRail);
+  platforms.push({ x: skX, z: skZ, hw: 9, hd: 1.5, y: 1.15 });
 }
-function handleResize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,IS_MOBILE?1.35:1.75));renderer.setSize(innerWidth,innerHeight);}
-window.addEventListener('resize',handleResize);window.addEventListener('orientationchange',()=>setTimeout(handleResize,150));
-document.getElementById('notice').style.display=IS_MOBILE?'block':'none';
-if(IS_MOBILE) setTimeout(()=>document.getElementById('notice').style.display='none',3500);
+buildAmusementAndSkatePark();
+
+// --- 5.3 РЕКА С ФИЗИЧЕСКОЙ ВОДОЙ И БОЛЬШОЙ ВАНТОВЫЙ МОСТ (Разделы 3.3, 6.2, 8.4) ---
+const RIVER_X = 360;
+const waterGeo = new THREE.PlaneGeometry(110, 1600, 24, 64);
+const waterMat = new THREE.MeshPhysicalMaterial({
+  color: 0x0277bd,
+  roughness: 0.12,
+  metalness: 0.15,
+  transmission: 0.55,
+  transparent: true,
+  opacity: 0.86,
+  clearcoat: 1.0
+});
+const riverMesh = new THREE.Mesh(waterGeo, waterMat);
+riverMesh.rotation.x = -Math.PI / 2;
+riverMesh.position.set(RIVER_X, 0.12, 0);
+scene.add(riverMesh);
+
+function buildCableBridge() {
+  const brZ = 67;
+  // Высотный пилон и дорожное полотно на высоте 18 м (с пандусами заезда)
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(130, 1.4, 22), roadMat);
+  deck.position.set(RIVER_X, 18, brZ);
+  deck.castShadow = true;
+  scene.add(deck);
+  platforms.push({ x: RIVER_X, z: brZ, hw: 65, hd: 11, y: 18.7 });
+
+  // Пилоны и ванты
+  [-32, 32].forEach(px => {
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(4.5, 48, 24), new THREE.MeshStandardMaterial({ color: 0xe53935 }));
+    pylon.position.set(RIVER_X + px, 24, brZ);
+    pylon.castShadow = true;
+    scene.add(pylon);
+    // Ванты (тросы)
+    for (let c = -3; c <= 3; c++) {
+      if (c === 0) continue;
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 28, 6), concreteMat);
+      cable.position.set(RIVER_X + px + c * 4.5, 30, brZ + 10);
+      cable.rotation.z = c * 0.25;
+      scene.add(cable);
+    }
+  });
+}
+buildCableBridge();
+
+// --- 5.4 3D-ТРАВА НА GPU С ШЕЙДЕРОМ ВЕТРА (Раздел 6.2) ---
+const grassUniforms = { uTime: { value: 0 } };
+function buildGrass() {
+  const bladeGeo = new THREE.ConeGeometry(0.14, 0.72, 4);
+  bladeGeo.translate(0, 0.36, 0);
+  const grassMat = new THREE.MeshLambertMaterial({ color: 0x388e3c });
+  grassMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = grassUniforms.uTime;
+    shader.vertexShader = `uniform float uTime;\n` + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+       if (position.y > 0.1) {
+         float w = sin(uTime * 2.8 + instanceMatrix[3][0] * 0.35 + instanceMatrix[3][2] * 0.35);
+         transformed.x += w * 0.2 * position.y;
+       }`
+    );
+  };
+  const COUNT = 20000;
+  const inst = new THREE.InstancedMesh(bladeGeo, grassMat, COUNT);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < COUNT; i++) {
+    const z = lawnZones[i % lawnZones.length];
+    dummy.position.set(z.x + (Math.random() - 0.5) * z.w, 0.28, z.z + (Math.random() - 0.5) * z.d);
+    dummy.rotation.y = Math.random() * Math.PI * 2;
+    dummy.scale.setScalar(0.75 + Math.random() * 0.7);
+    dummy.updateMatrix();
+    inst.setMatrixAt(i, dummy.matrix);
+  }
+  inst.instanceMatrix.needsUpdate = true;
+  scene.add(inst);
+}
+buildGrass();
+
+// ============================================================================
+// МОДУЛЬ 6: ПЕРСОНАЖИ, СВИДЕТЕЛИ И СКЕЛЕТНЫЕ GLB-АНИМАЦИИ (Разделы 5.2, 7.1)
+// ============================================================================
+const activeMixers = [];
+
+function createDetailedHuman(cfg = {}) {
+  const root = new THREE.Group();
+  const fallback = new THREE.Group();
+  root.add(fallback);
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skin || 0xf1c27d, roughness: 0.65 });
+  const jacketMat = new THREE.MeshStandardMaterial({ color: cfg.jacket || 0x1e3799, roughness: 0.55 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: cfg.pants || 0x263238, roughness: 0.75 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.42, 8, 12), jacketMat);
+  torso.position.y = 1.18; torso.scale.set(1.15, 1, 0.72); torso.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 14, 14), skinMat);
+  head.position.y = 1.72; head.castShadow = true;
+  fallback.add(torso, head);
+
+  function makeLimb(x, y, h, mat) {
+    const p = new THREE.Group(); p.position.set(x, y, 0);
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, h, 6, 10), mat);
+    m.position.y = -h / 2 - 0.08; m.castShadow = true;
+    p.add(m); fallback.add(p); return p;
+  }
+  const lArm = makeLimb(-0.34, 1.42, 0.34, jacketMat);
+  const rArm = makeLimb(0.34, 1.42, 0.34, jacketMat);
+  const lLeg = makeLimb(-0.14, 0.82, 0.44, pantsMat);
+  const rLeg = makeLimb(0.14, 0.82, 0.44, pantsMat);
+
+  // Купол парашюта (скрыт по умолчанию — Раздел 9)
+  const chute = new THREE.Mesh(
+    new THREE.SphereGeometry(2.6, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0xff9100, side: THREE.DoubleSide })
+  );
+  chute.position.y = 3.2;
+  chute.visible = false;
+  root.add(chute);
+
+  return {
+    mesh: root, chute, fallback, mixer: null, actions: {}, currentAction: null,
+    setGLB(clonedScene, animations, rotOffset = 0) {
+      fallback.visible = false;
+      clonedScene.rotation.y = rotOffset;
+      clonedScene.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      root.add(clonedScene);
+      if (animations && animations.length) {
+        const mixer = new THREE.AnimationMixer(clonedScene);
+        this.mixer = mixer;
+        activeMixers.push(mixer);
+        animations.forEach(clip => {
+          const n = clip.name.toLowerCase();
+          if (n.includes('idle')) this.actions.idle = mixer.clipAction(clip);
+          if (n.includes('walk')) this.actions.walk = mixer.clipAction(clip);
+          if (n.includes('run')) this.actions.run = mixer.clipAction(clip);
+        });
+        const first = this.actions.idle || this.actions.walk || mixer.clipAction(animations[0]);
+        if (first) { first.play(); this.currentAction = first; }
+      }
+    },
+    animate(speed, time) {
+      if (this.mixer) {
+        let act = this.actions.idle;
+        if (speed > 6.5 && this.actions.run) act = this.actions.run;
+        else if (speed > 0.25 && (this.actions.walk || this.actions.run)) act = this.actions.walk || this.actions.run;
+        if (act && act !== this.currentAction) {
+          if (this.currentAction) this.currentAction.fadeOut(0.18);
+          act.reset().fadeIn(0.18).play();
+          this.currentAction = act;
+        }
+        return;
+      }
+      const amp = speed > 0.15 ? Math.min(speed * 0.12, 0.85) : 0;
+      const a = Math.sin(time * 10) * amp;
+      lArm.rotation.x = a; rArm.rotation.x = -a;
+      lLeg.rotation.x = -a; rLeg.rotation.x = a;
+    }
+  };
+}
+
+// ============================================================================
+// МОДУЛЬ 7: АВТОПАРК, FFD-ДЕФОРМАЦИЯ ВЕРШИН, ОТКАЗ УЗЛОВ И ВЕРТОЛЁТ (Разделы 3, 4)
+// ============================================================================
+const VEHICLE_SPECS = [
+  { id: 'bavaria', key: 'Digit1', name: '1. Bavaria M5 Competition', type: 'sedan', color: 0x0d47a1, w: 2.1, h: 1.38, l: 4.8, maxSpeed: 46, accel: 28, handling: 2.8, mass: 1.6 },
+  { id: 'stuttgart', key: 'Digit2', name: '2. Stuttgart 911 GT', type: 'super', color: 0xd50000, w: 2.15, h: 1.22, l: 4.55, maxSpeed: 55, accel: 35, handling: 3.2, mass: 1.35 },
+  { id: 'tokyo', key: 'Digit3', name: '3. Tokyo ZR-350 Coupe', type: 'coupe', color: 0xffd600, w: 2.06, h: 1.26, l: 4.45, maxSpeed: 48, accel: 30, handling: 3.3, mass: 1.4 },
+  { id: 'detroit', key: 'Digit4', name: '4. Detroit V8 Challenger', type: 'muscle', color: 0x1b1b1b, w: 2.16, h: 1.36, l: 4.95, maxSpeed: 47, accel: 32, handling: 2.5, mass: 1.85 },
+  { id: 'luxor', key: 'Digit5', name: '5. Luxor G-Wagen 4x4', type: 'suv', color: 0x263238, w: 2.24, h: 1.88, l: 4.8, maxSpeed: 39, accel: 24, handling: 2.35, mass: 2.5 },
+  { id: 'titan', key: 'Digit6', name: '6. Titan Hauler 6x6 (Тягач)', type: 'truck', color: 0x6a1b9a, w: 2.65, h: 3.2, l: 7.6, maxSpeed: 32, accel: 16, handling: 1.75, mass: 5.8 },
+  { id: 'goliath', key: 'Digit7', name: '7. Goliath Heavy Dump (Самосвал)', type: 'dump', color: 0xef6c00, w: 2.85, h: 3.1, l: 7.9, maxSpeed: 29, accel: 15, handling: 1.65, mass: 6.8 },
+  { id: 'police', key: 'Digit8', name: '8. Vanguard Police Interceptor', type: 'police', color: 0x111111, w: 2.12, h: 1.4, l: 4.85, maxSpeed: 49, accel: 31, handling: 2.9, mass: 1.7 },
+  { id: 'moto', key: 'Digit9', name: '9. Street Moto / Skate', type: 'moto', color: 0x00e676, w: 0.85, h: 1.15, l: 2.3, maxSpeed: 50, accel: 37, handling: 3.7, mass: 0.5 },
+  { id: 'heli', key: 'Digit0', name: '0. Falcon-X Executive Heli', type: 'heli', color: 0x1c313a, w: 2.6, h: 2.6, l: 8.4, maxSpeed: 70, accel: 26, handling: 2.3, mass: 3.2 }
+];
+
+const vehicles = [];
+const spawnedByUserPool = []; // Пул до 6 деформируемых машин, чтобы не было утечек памяти (Раздел 2, 4.7)
+const detachedParts = [];     // Оторванные при авариях колёса, капоты и обломки вертолётов
+
+function spawnVehicle(spec, x, z, rotY = 0, isAI = false, isCop = false) {
+  const root = new THREE.Group();
+  const bodyTilt = new THREE.Group();
+  root.add(bodyTilt);
+
+  const paintMat = new THREE.MeshPhysicalMaterial({
+    color: spec.color,
+    metalness: 0.7,
+    roughness: 0.22,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.08
+  });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7 });
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.95, roughness: 0.1 });
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0f2537, transparent: true, opacity: 0.75, roughness: 0.08, clearcoat: 1.0 });
+  const hlLeftMat = new THREE.MeshBasicMaterial({ color: 0xe0f7fa });
+  const hlRightMat = new THREE.MeshBasicMaterial({ color: 0xe0f7fa });
+  const brakeMat = new THREE.MeshBasicMaterial({ color: 0x770000 });
+
+  const wheels = [];
+  const deformableMeshes = [];
+  let hoodPivot = null, sirenRed = null, sirenBlue = null;
+  let mainRotor = null, tailRotor = null, rotorBlurDisk = null, searchLight = null;
+
+  if (spec.type === 'heli') {
+    // --- ВЕРТОЛЁТ ПО ТЗ РАЗДЕЛ 3.1 (Узлы heli_body, rotor_main, rotor_tail, door_L/R, light_nav_*, searchlight) ---
+    const heliBody = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.85, 4.4, 8, 6, 10), paintMat);
+    heliBody.name = 'heli_body';
+    heliBody.position.set(0, 1.55, 0.4);
+    heliBody.castShadow = true;
+    deformableMeshes.push(heliBody);
+
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.12, 16, 14), glassMat);
+    canopy.scale.set(0.92, 0.75, 1.45);
+    canopy.position.set(0, 1.6, 1.45);
+
+    const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 1.3), paintMat);
+    doorL.name = 'door_L'; doorL.position.set(-1.16, 1.5, 0.8);
+    const doorR = doorL.clone(); doorR.name = 'door_R'; doorR.position.x = 1.16;
+
+    const tailBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.46, 4.8, 12), paintMat);
+    tailBoom.rotation.x = Math.PI / 2;
+    tailBoom.position.set(0, 1.85, -3.5);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.65, 1.15), paintMat);
+    fin.position.set(0, 2.45, -5.6);
+
+    // Полозья шасси (на них можно запрыгнуть — Раздел 3.3)
+    [-1, 1].forEach(s => {
+      const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.6, 8), chromeMat);
+      skid.rotation.x = Math.PI / 2;
+      skid.position.set(s * 1.15, 0.16, 0.4);
+      const st1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 6), darkMat);
+      st1.position.set(s * 1.05, 0.55, 1.3);
+      const st2 = st1.clone(); st2.position.z = -0.6;
+      bodyTilt.add(skid, st1, st2);
+    });
+
+    // Навигационные БАНО и управляемый прожектор
+    const navRed = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
+    navRed.name = 'light_nav_L'; navRed.position.set(-1.25, 1.5, 0.5);
+    const navGreen = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00e676 }));
+    navGreen.name = 'light_nav_R'; navGreen.position.set(1.25, 1.5, 0.5);
+
+    searchLight = new THREE.SpotLight(0xffffff, 0, 120, Math.PI / 6, 0.4, 1);
+    searchLight.name = 'searchlight';
+    searchLight.position.set(0, 0.7, 2.4);
+    searchLight.target.position.set(0, -15, 18);
+    bodyTilt.add(searchLight, searchLight.target);
+
+    // Несущий винт + диск размытия на высоких оборотах (Раздел 3.1)
+    mainRotor = new THREE.Group();
+    mainRotor.name = 'rotor_main';
+    mainRotor.position.set(0, 2.68, 0.45);
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.04, 0.34), darkMat);
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.04, 10.4), darkMat);
+    rotorBlurDisk = new THREE.Mesh(
+      new THREE.CylinderGeometry(5.2, 5.2, 0.02, 24),
+      new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.0 })
+    );
+    mainRotor.add(b1, b2, rotorBlurDisk);
+
+    tailRotor = new THREE.Group();
+    tailRotor.name = 'rotor_tail';
+    tailRotor.position.set(0.22, 2.55, -5.7);
+    tailRotor.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.75, 0.18), chromeMat));
+
+    bodyTilt.add(heliBody, canopy, doorL, doorR, tailBoom, fin, navRed, navGreen, mainRotor, tailRotor);
+  } else {
+    // --- АВТОМОБИЛЬ С ПОДРАЗДЕЛЁННОЙ СЕТКОЙ КУЗОВА ДЛЯ НАКОПИТЕЛЬНОЙ FFD-ДЕФОРМАЦИИ (Раздел 4.2) ---
+    const chassisH = (spec.type === 'truck' || spec.type === 'dump') ? 1.15 : 0.72;
+    // Сетка 12x6x18 сегментов позволяет честно мять бампер, крылья, бока и моторный отсек по точкам удара!
+    const chassisGeo = new THREE.BoxGeometry(spec.w, chassisH, spec.l, 12, 6, 18);
+    const chassis = new THREE.Mesh(chassisGeo, paintMat);
+    chassis.position.y = 0.68;
+    chassis.castShadow = true;
+    chassis.receiveShadow = true;
+    bodyTilt.add(chassis);
+    deformableMeshes.push(chassis);
+
+    const cabH = spec.type === 'suv' ? 0.78 : (spec.type === 'truck' || spec.type === 'dump' ? 1.55 : 0.56);
+    const cabL = (spec.type === 'truck' || spec.type === 'dump') ? 2.4 : spec.l * 0.52;
+    const cabZ = (spec.type === 'truck' || spec.type === 'dump') ? 1.35 : -0.2;
+    const cabGeo = new THREE.BoxGeometry(spec.w - 0.24, cabH, cabL, 8, 4, 8);
+    const cabMat = spec.type === 'police' ? new THREE.MeshPhysicalMaterial({ color: 0xffffff, clearcoat: 1 }) : paintMat;
+    const cabin = new THREE.Mesh(cabGeo, cabMat);
+    cabin.position.set(0, 0.98 + cabH / 2, cabZ);
+    cabin.castShadow = true;
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(spec.w - 0.18, cabH - 0.12, cabL + 0.04), glassMat);
+    glass.position.copy(cabin.position);
+    bodyTilt.add(cabin, glass);
+    deformableMeshes.push(cabin);
+
+    if (spec.type === 'dump') {
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(spec.w + 0.1, 1.55, 4.4, 6, 4, 8), new THREE.MeshStandardMaterial({ color: 0xe65100 }));
+      bed.position.set(0, 1.85, -1.35);
+      bodyTilt.add(bed);
+      deformableMeshes.push(bed);
+    }
+
+    // Отдельный узел капота на шарнире (Раздел 4.2, 4.3 — при 3-4 ударах гофрируется и открывается/срывается!)
+    hoodPivot = new THREE.Group();
+    hoodPivot.name = 'hood';
+    hoodPivot.position.set(0, 1.06, spec.l * 0.15);
+    const hoodMesh = new THREE.Mesh(new THREE.BoxGeometry(spec.w - 0.16, 0.08, spec.l * 0.32, 8, 2, 8), paintMat);
+    hoodMesh.position.set(0, 0, spec.l * 0.16);
+    hoodPivot.add(hoodMesh);
+    bodyTilt.add(hoodPivot);
+    deformableMeshes.push(hoodMesh);
+
+    if (spec.type === 'police') {
+      sirenRed = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.15, 0.24), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+      sirenRed.position.set(-0.25, 1.65, -0.15);
+      sirenBlue = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.15, 0.24), new THREE.MeshBasicMaterial({ color: 0x0066ff }));
+      sirenBlue.position.set(0.25, 1.65, -0.15);
+      bodyTilt.add(sirenRed, sirenBlue);
+    }
+
+    // Раздельные левая и правая фары (чтобы на 2-й стадии удара в бампер гасла одна фара — Раздел 4.3!)
+    const hw = spec.w * 0.35;
+    const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.1), hlLeftMat);
+    hlL.position.set(-hw, 0.72, spec.l / 2 + 0.02);
+    const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.1), hlRightMat);
+    hlR.position.set(hw, 0.72, spec.l / 2 + 0.02);
+    const tlL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.16, 0.1), brakeMat);
+    tlL.position.set(-hw, 0.72, -spec.l / 2 - 0.02);
+    const tlR = tlL.clone(); tlR.position.x = hw;
+    bodyTilt.add(hlL, hlR, tlL, tlR);
+
+    // Колёса по соглашению узлов (wheel_FL, wheel_FR, wheel_RL, wheel_RR) с индивидуальным здоровьем
+    const wRadius = (spec.type === 'truck' || spec.type === 'dump') ? 0.56 : 0.41;
+    const wWidth = spec.type === 'moto' ? 0.24 : 0.34;
+    const tireGeo = new THREE.CylinderGeometry(wRadius, wRadius, wWidth, 18);
+    tireGeo.rotateZ(Math.PI / 2);
+    const rimGeo = new THREE.CylinderGeometry(wRadius * 0.62, wRadius * 0.62, wWidth + 0.02, 12);
+    rimGeo.rotateZ(Math.PI / 2);
+
+    const zPos = [spec.l * 0.32, -spec.l * 0.32];
+    const names = [['wheel_FL', 'wheel_FR'], ['wheel_RL', 'wheel_RR']];
+    zPos.forEach((wz, rIdx) => {
+      [-1, 1].forEach((s, cIdx) => {
+        const wGroup = new THREE.Group();
+        wGroup.name = names[rIdx][cIdx];
+        wGroup.position.set(s * (spec.w / 2 - 0.02), wRadius, wz);
+        const tire = new THREE.Mesh(tireGeo, darkMat);
+        const rim = new THREE.Mesh(rimGeo, chromeMat);
+        wGroup.add(tire, rim);
+        root.add(wGroup);
+        wheels.push({
+          name: names[rIdx][cIdx],
+          group: wGroup,
+          tire,
+          side: s,
+          isFront: rIdx === 0,
+          hp: 100,
+          state: 'ok' // 'ok' | 'flat' | 'detached'
+        });
+      });
+    });
+  }
+
+  // Частицы дыма/пара/огня из-под капота (Раздел 4.3, 4.5)
+  const smokeGroup = new THREE.Group();
+  smokeGroup.position.set(0, 1.15, spec.l * 0.36);
+  const smokePuffs = [];
+  for (let i = 0; i < 6; i++) {
+    const puff = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.32, 0),
+      new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.0 })
+    );
+    smokeGroup.add(puff);
+    smokePuffs.push(puff);
+  }
+  bodyTilt.add(smokeGroup);
+
+  root.position.set(x, 0, z);
+  root.rotation.y = rotY;
+  scene.add(root);
+
+  const vObj = {
+    spec, mesh: root, bodyTilt, wheels, deformableMeshes, hoodPivot,
+    mainRotor, tailRotor, rotorBlurDisk, searchLight,
+    sirenRed, sirenBlue, hlLeftMat, hlRightMat, brakeMat, smokePuffs,
+    paintMat,
+    // Физика движения
+    speed: 0, steer: 0, vy: 0, pitch: 0, roll: 0, yawRate: 0,
+    isAI, isCop,
+    // Параметры вертолёта (Раздел 3)
+    rotorRPM: 0,          // 0..1 (раскрутка 6-8 с, выбег 10 с)
+    flightMode: 'arcade', // 'arcade' | 'sim'
+    tailRotorBroken: false,
+    unmannedFalling: false,
+    // Узлы и накопительная деформация (Раздел 4)
+    frontHits: 0,         // Счётчик ударов в передний бампер (стадии 1..5 таблицы 4.3)
+    zoneStiffness: { front: 1.0, rear: 1.0, left: 1.0, right: 1.0 },
+    engineHP: 100,
+    fuelTankHP: 100,
+    steeringBias: 0,      // Постоянный увод руля в сторону при зажатом крыле или спущенном колесе
+    maxSpeedCap: 1.0,     // Ограничитель максимальной скорости при повреждении
+    fireTimer: 0,
+    exploded: false,
+
+    // Метод необратимой FFD-деформации вершин кузова и агрегатов (Раздел 4.2, 4.3, 4.4)
+    applyImpact(worldContactPt, impactSpeedMs, localZone = 'front') {
+      if (this.exploded) return;
+      audio.playCrash(impactSpeedMs / 12);
+
+      // Снижаем остаточную жёсткость зоны (каждый следующий удар мнёт сильнее — Раздел 4.1)
+      const stiff = this.zoneStiffness[localZone] || 1.0;
+      this.zoneStiffness[localZone] = Math.max(0.25, stiff - 0.16);
+      const dentDepth = Math.min(0.65, (impactSpeedMs / 28) * (1.25 / stiff));
+
+      // Смещаем вершины кузова в радиусе точки контакта с гауссовым спадом (FFD)
+      const localPt = this.bodyTilt.worldToLocal(worldContactPt.clone());
+      const radius = 1.65;
+      this.deformableMeshes.forEach(m => {
+        const pos = m.geometry.attributes.position;
+        if (!pos) return;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i);
+          const worldV = v.clone().applyMatrix4(m.matrix);
+          const dist = worldV.distanceTo(localPt);
+          if (dist < radius) {
+            const falloff = Math.exp(-(dist * dist) / (2 * 0.48 * 0.48));
+            // Вминаем внутрь центра кузова
+            v.z -= Math.sign(localPt.z || 1) * dentDepth * falloff * 0.85;
+            v.x -= Math.sign(localPt.x || 0.2) * dentDepth * falloff * 0.45;
+            v.y += (Math.random() - 0.4) * dentDepth * falloff * 0.35;
+            pos.setXYZ(i, v.x, v.y, v.z);
+          }
+        }
+        pos.needsUpdate = true;
+        m.geometry.computeVertexNormals();
+      });
+
+      // Повреждение лака (матовость на мятом кузове)
+      this.paintMat.roughness = Math.min(0.75, this.paintMat.roughness + 0.08);
+
+      // Если удар пришёлся в переднюю часть (Таблица 4.3 ТЗ: 5 стадий ударов на ~40 км/ч)
+      if (localZone === 'front' && impactSpeedMs > 6.5) {
+        const stageJump = impactSpeedMs > 24 ? 2 : 1;
+        this.frontHits = Math.min(5, this.frontHits + stageJump);
+        this.applyFrontStageEffects();
+      } else {
+        this.engineHP = Math.max(0, this.engineHP - impactSpeedMs * 1.1);
+      }
+
+      // Проверка удара по ближайшему колесу (Раздел 4.4 — спуск и отрыв колеса)
+      this.wheels.forEach(w => {
+        if (w.state === 'detached') return;
+        const wWorld = new THREE.Vector3();
+        w.group.getWorldPosition(wWorld);
+        if (wWorld.distanceTo(worldContactPt) < 1.55 && impactSpeedMs > 9) {
+          w.hp -= impactSpeedMs * 3.2;
+          if (w.hp <= 0) {
+            this.detachWheel(w);
+          } else if (w.hp < 55 && w.state === 'ok') {
+            w.state = 'flat';
+            w.tire.scale.set(1, 0.72, 0.72);
+            this.steeringBias += w.side * 0.38;
+            showToast(`⚠️ Пробито колесо (${w.name})! Машину уводит в сторону.`);
+          }
+        }
+      });
+
+      // Урон водителю от перегрузки и риск вылета через лобовое стекло (Раздел 4.6)
+      if (player.inVehicle === this && impactSpeedMs > 18) {
+        damagePlayer((impactSpeedMs - 16) * 1.8, 'Автокатастрофа');
+      }
+    },
+
+    // Точная реализация 5 стадий таблицы 4.3 ТЗ при ударах в передний бампер
+    applyFrontStageEffects() {
+      if (this.frontHits === 1) {
+        this.engineHP = Math.min(this.engineHP, 88);
+        showToast('💥 <b>Удар 1/5:</b> Бампер вмят на 4 см, трещины лака. Ходовые качества в норме.');
+      } else if (this.frontHits === 2) {
+        this.hlRightMat.color.setHex(0x111111); // Правая фара гаснет!
+        this.engineHP = Math.min(this.engineHP, 72);
+        showToast('💥 <b>Удар 2/5:</b> Бампер и капот вмяты на 12 см, правая фара разбита и погасла!');
+      } else if (this.frontHits === 3) {
+        if (this.hoodPivot) this.hoodPivot.rotation.x = -0.22; // Капот домиком
+        this.engineHP = Math.min(this.engineHP, 48);
+        this.maxSpeedCap = 0.78;
+        showToast('💨 <b>Удар 3/5:</b> Капот гофрирован, пробит радиатор — валит пар, мощность двигателя упала!');
+      } else if (this.frontHits === 4) {
+        if (this.hoodPivot) this.hoodPivot.rotation.x = -0.68; // Капот открылся!
+        this.steeringBias = 0.45; // Крыло прижато к колесу — увод руля!
+        this.maxSpeedCap = 0.52;
+        this.engineHP = Math.min(this.engineHP, 24);
+        showToast('⚠️ <b>Удар 4/5:</b> Капот сорван с замка, крыло зажало колесо — руль сильно тянет вбок, скорость ограничена!');
+      } else if (this.frontHits >= 5) {
+        this.engineHP = 0;
+        this.maxSpeedCap = 0;
+        this.speed = 0;
+        if (this. wheels[0] && this.wheels[0].state !== 'detached') this.detachWheel(this.wheels[0]);
+        showToast('🔥 <b>Удар 5/5:</b> Моторный отсек смят до стойки, подвеска разрушена — двигатель заглох!');
+      }
+    },
+
+    detachWheel(w) {
+      w.state = 'detached';
+      w.group.visible = false;
+      this.steeringBias += w.side * 0.65;
+      this.maxSpeedCap = Math.min(this.maxSpeedCap, 0.45);
+      // Создаём физическое оторванное колесо, которое катится по улице (Раздел 4.4)
+      const wPos = new THREE.Vector3();
+      w.group.getWorldPosition(wPos);
+      const looseWheel = w.tire.clone();
+      looseWheel.position.copy(wPos);
+      scene.add(looseWheel);
+      detachedParts.push({
+        mesh: looseWheel,
+        vx: (Math.random() - 0.5) * 14,
+        vy: 5.5,
+        vz: (Math.random() - 0.5) * 14,
+        ttl: 60
+      });
+      showToast(`🛞 Отрыв колеса (${w.name})! Машина легла на тормозной диск.`);
+    },
+
+    explode() {
+      if (this.exploded) return;
+      this.exploded = true;
+      this.engineHP = 0;
+      this.speed = 0;
+      audio.playCrash(2.5);
+      // Материал меняется на обугленную сажу (Раздел 4.5)
+      this.paintMat.color.setHex(0x141414);
+      this.paintMat.roughness = 0.95;
+      this.paintMat.clearcoat = 0;
+      showToast('💥 <b>ВЗРЫВ ТРАНСПОРТА!</b> Детонация топливного бака и разлёт обломков.');
+      if (player.inVehicle === this) {
+        toggleVehicle(true);
+        damagePlayer(100, 'Взрыв транспорта');
+      }
+    }
+  };
+
+  vehicles.push(vObj);
+  return vObj;
+}
+
+// ============================================================================
+// МОДУЛЬ 8: РАЗМЕЩЕНИЕ ТЕХНИКИ, ПЕШЕХОДОВ И ЗАГРУЗКА СВОБОДНЫХ GLB (Раздел 7)
+// ============================================================================
+const startX = 48, startZ = 82;
+VEHICLE_SPECS.forEach((spec, idx) => {
+  if (spec.type === 'heli') {
+    spawnVehicle(spec, 97, 43, -Math.PI / 4);
+  } else {
+    const row = Math.floor(idx / 5);
+    const col = idx % 5;
+    spawnVehicle(spec, 30 + col * 8.8, 60 - row * 15, 0);
+  }
+});
+
+// Городской трафик и патрули полиции
+for (let i = 0; i < 16; i++) {
+  const isCop = i < 4;
+  const spec = isCop ? VEHICLE_SPECS.find(s => s.id === 'police') : VEHICLE_SPECS[i % 7];
+  const gx = (i % 4) - 2;
+  const gz = Math.floor(i / 4) - 2;
+  spawnVehicle(spec, gx * STEP + 5.5, gz * STEP + 20, 0, true, isCop);
+}
+
+const pedestrians = [];
+const jackets = [0xc0392b, 0x2980b9, 0x27ae60, 0x8e44ad, 0xd35400, 0x34495e];
+for (let i = 0; i < 36; i++) {
+  const isPolice = i < 6;
+  const human = createDetailedHuman({
+    jacket: isPolice ? 0x0a1931 : jackets[i % jackets.length],
+    pants: isPolice ? 0x0a1931 : 0x263238
+  });
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 20 + Math.random() * 210;
+  human.mesh.position.set(Math.cos(angle) * dist, 0.3, Math.sin(angle) * dist);
+  scene.add(human.mesh);
+  pedestrians.push({
+    human, mesh: human.mesh, dir: Math.random() * Math.PI * 2,
+    speed: 2.3 + Math.random(), isPolice, alive: true, timer: 3,
+    callingPoliceTimer: 0 // Таймер звонка свидетеля в полицию (Раздел 5.1)
+  });
+}
+
+const playerHuman = createDetailedHuman({ jacket: 0x111111, pants: 0x1565c0 });
+playerHuman.mesh.position.set(startX, 0.3, startZ);
+scene.add(playerHuman.mesh);
+
+// Подгрузка настоящих свободных .GLB моделей (Michelle, Soldier, Ferrari, CesiumMilkTruck)
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(dracoLoader);
+
+gltfLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/Michelle.glb', gltf => {
+  playerHuman.setGLB(SkeletonUtils.clone(gltf.scene), gltf.animations, 0);
+  pedestrians.filter(p => !p.isPolice).slice(0, 12).forEach(p => {
+    p.human.setGLB(SkeletonUtils.clone(gltf.scene), gltf.animations, 0);
+  });
+  document.getElementById('status-text').textContent = 'Физика 60 Гц · Скелетные GLB-персонажи и FFD-сетки активны!';
+}, undefined, () => {});
+
+gltfLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/Soldier.glb', gltf => {
+  pedestrians.filter(p => p.isPolice).forEach(p => {
+    p.human.setGLB(SkeletonUtils.clone(gltf.scene), gltf.animations, Math.PI);
+  });
+}, undefined, () => {});
+
+// ============================================================================
+// МОДУЛЬ 9: ИГРОК, ГРАВИТАЦИЯ, ПАДЕНИЕ ПО ТАБЛИЦЕ СКОРОСТЕЙ И РОЗЫСК СО СВИДЕТЕЛЯМИ
+// ============================================================================
+const player = {
+  inVehicle: null,
+  hp: 100,
+  armor: 100,
+  money: 15000,
+  wanted: 0,
+  searchCenter: new THREE.Vector3(),
+  searchRadius: 95,
+  evadeTimer: 0,
+  vy: 0,
+  vx: 0,
+  vz: 0,
+  airborne: false,
+  parachuteOpen: false,
+  stunTimer: 0,
+  standingOnHeli: null,
+  camMode: 0,
+  deadOrBusted: false
+};
+
+function updateHUD() {
+  document.getElementById('hp-bar').style.width = Math.max(0, player.hp) + '%';
+  document.getElementById('armor-bar').style.width = Math.max(0, player.armor) + '%';
+  document.getElementById('money-val').textContent = '$' + player.money.toLocaleString('en-US');
+  const starsEl = document.getElementById('stars');
+  let html = '';
+  for (let i = 1; i <= 5; i++) html += `<span class="${i <= player.wanted ? 'star-active' : ''}">★</span>`;
+  starsEl.innerHTML = html;
+}
+
+function damagePlayer(amount, reason = 'Травма') {
+  if (player.deadOrBusted || amount <= 0) return;
+  if (player.armor > 0) {
+    const absorb = Math.min(player.armor, amount * 0.65);
+    player.armor -= absorb;
+    amount -= absorb;
+  }
+  player.hp = Math.max(0, player.hp - amount);
+  updateHUD();
+  if (player.hp <= 0) triggerWastedOrBusted('wasted', reason);
+}
+
+function triggerWastedOrBusted(type, reason = '') {
+  if (player.deadOrBusted) return;
+  player.deadOrBusted = true;
+  if (player.inVehicle) toggleVehicle(true);
+  playerHuman.mesh.rotation.x = -Math.PI / 2;
+
+  const ov = document.getElementById('overlay-screen');
+  const title = document.getElementById('overlay-title');
+  const sub = document.getElementById('overlay-sub');
+  ov.style.display = 'flex';
+
+  if (type === 'busted') {
+    title.textContent = 'АРЕСТОВАН';
+    title.style.color = '#38bdf8';
+    sub.textContent = 'Доставка в полицейский участок · Штраф -$300 и изъятие спецсредств';
+    player.money = Math.max(0, player.money - 300);
+  } else {
+    title.textContent = 'ВЫ ПОГИБЛИ';
+    title.style.color = '#ff1744';
+    sub.textContent = `Причина: ${reason} · Госпитализация в городскую больницу (-$500)`;
+    player.money = Math.max(0, player.money - 500);
+  }
+
+  setTimeout(() => {
+    ov.style.display = 'none';
+    player.deadOrBusted = false;
+    player.hp = 100;
+    player.armor = 50;
+    player.wanted = 0;
+    player.vy = 0;
+    player.airborne = false;
+    playerHuman.mesh.rotation.x = 0;
+    // Респавн у Больницы или Полицейского участка (Раздел 5.3)
+    if (type === 'busted') playerHuman.mesh.position.set(-STEP / 2 + 22, 0.3, 45);
+    else playerHuman.mesh.position.set(-STEP / 2 - 22, 0.3, 45);
+    updateHUD();
+  }, 3200);
+}
+
+// СИСТЕМА СВИДЕТЕЛЕЙ И ЗОНЫ РОЗЫСКА (Раздел 5.1 ТЗ)
+function reportCrime(crimePos, minStars = 1, description = 'Правонарушение') {
+  // 1. Проверяем, видит ли преступление полицейский напрямую
+  let seenByCop = false;
+  vehicles.forEach(v => {
+    if (v.isCop && v.mesh.position.distanceTo(crimePos) < 68) seenByCop = true;
+  });
+  pedestrians.forEach(p => {
+    if (p.alive && p.isPolice && p.mesh.position.distanceTo(crimePos) < 55) seenByCop = true;
+  });
+
+  if (seenByCop) {
+    activateWanted(crimePos, minStars);
+    return;
+  }
+
+  // 2. Ищем живого гражданского свидетеля поблизости (в радиусе 48 м)
+  let witness = null;
+  for (const p of pedestrians) {
+    if (p.alive && !p.isPolice && p.mesh.position.distanceTo(crimePos) < 48) {
+      witness = p;
+      break;
+    }
+  }
+
+  if (witness) {
+    witness.callingPoliceTimer = 2.4; // Свидетель достаёт телефон и звонит в полицию!
+    document.getElementById('witness-alert').style.display = 'block';
+    showToast(`👀 <b>Свидетель заметил (${description})!</b> Он звонит в полицию!`);
+  } else {
+    // Преступление без свидетелей — звёзд НЕТ (Пункт 5.5 Чек-листа приёмки ТЗ!)
+    showToast(`🔇 <b>Без свидетелей (${description}):</b> Никто не видел нарушения — розыск не объявлен.`);
+  }
+}
+
+function activateWanted(pos, minStars) {
+  player.wanted = Math.min(5, Math.max(player.wanted + 1, minStars));
+  player.searchCenter.copy(pos);
+  player.searchRadius = 85 + player.wanted * 22;
+  player.evadeTimer = 28;
+  document.getElementById('witness-alert').style.display = 'none';
+  updateHUD();
+}
+
+// Посадка и выход из транспорта (включая выход из вертолёта В ВОЗДУХЕ — Раздел 3.3 ТЗ)
+function toggleVehicle(forceExit = false) {
+  if (player.deadOrBusted) return;
+  if (player.inVehicle) {
+    const v = player.inVehicle;
+    const exitAlt = v.mesh.position.y;
+    playerHuman.mesh.position.set(
+      v.mesh.position.x - Math.cos(v.mesh.rotation.y) * (v.spec.w / 2 + 1.4),
+      Math.max(0.3, exitAlt),
+      v.mesh.position.z + Math.sin(v.mesh.rotation.y) * (v.spec.w / 2 + 1.4)
+    );
+    playerHuman.mesh.visible = true;
+    player.inVehicle = null;
+    document.getElementById('vehicle-badge').textContent = 'Пешком';
+    document.getElementById('speedo').style.display = 'none';
+
+    // Если игрок выпрыгнул из вертолёта в воздухе (Раздел 3.3 и 3.5 ТЗ)
+    if (exitAlt > 0.65) {
+      player.airborne = true;
+      player.vy = v.vy;
+      player.vx = Math.sin(v.mesh.rotation.y) * v.speed;
+      player.vz = Math.cos(v.mesh.rotation.y) * v.speed;
+      if (v.spec.type === 'heli') {
+        v.unmannedFalling = true; // Вертолёт без пилота переходит на авторотацию и падает!
+        showToast(`🪂 Вы выпрыгнули из вертолёта на высоте <b>${exitAlt.toFixed(1)} м</b>! Вертолёт без пилота падает.`);
+      }
+    }
+  } else if (!forceExit) {
+    let closest = null, minDist = 6.0;
+    vehicles.forEach(v => {
+      if (v.exploded) return;
+      const dist = v.mesh.position.distanceTo(playerHuman.mesh.position);
+      if (dist < minDist) { minDist = dist; closest = v; }
+    });
+    if (closest) {
+      const wasAI = closest.isAI;
+      player.inVehicle = closest;
+      closest.isAI = false;
+      closest.unmannedFalling = false;
+      player.standingOnHeli = null;
+      playerHuman.mesh.visible = false;
+      document.getElementById('vehicle-badge').textContent = closest.spec.name;
+      document.getElementById('speedo').style.display = 'block';
+      document.getElementById('prompt').style.display = 'none';
+      if (wasAI || closest.isCop) {
+        reportCrime(closest.mesh.position, closest.isCop ? 2 : 1, 'Угон транспорта');
+      }
+    }
+  }
+}
+
+function repairCurrentVehicle() {
+  const v = player.inVehicle;
+  if (!v) { showToast('Заедьте в ремонтный бокс на автомобиле или вертолёте!'); return; }
+  if (player.money < 250) { showToast('Недостаточно средств ($250)!'); return; }
+  player.money -= 250;
+  v.frontHits = 0;
+  v.engineHP = 100;
+  v.fuelTankHP = 100;
+  v.steeringBias = 0;
+  v.maxSpeedCap = 1.0;
+  v.tailRotorBroken = false;
+  v.exploded = false;
+  v.paintMat.roughness = 0.2;
+  v.hlLeftMat.color.setHex(0xe0f7fa);
+  v.hlRightMat.color.setHex(0xe0f7fa);
+  if (v.hoodPivot) v.hoodPivot.rotation.x = 0;
+  v.wheels.forEach(w => {
+    w.hp = 100; w.state = 'ok'; w.group.visible = true; w.tire.scale.set(1, 1, 1);
+  });
+  updateHUD();
+  showToast('🔧 <b>Гараж Pay & Spray:</b> Кузов, двигатель, фары и колёса полностью восстановлены!');
+}
+
+// ============================================================================
+// МОДУЛЬ 10: УПРАВЛЕНИЕ, КНОПКИ UI И ТЕЛЕПОРТАЦИЯ ПО ОСОБЫМ ЛОКАЦИЯМ
+// ============================================================================
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.repeat) return; // prevent repeated toggles while a key remains held
+  if (e.code === 'KeyF') toggleVehicle();
+  if (e.code === 'KeyV') player.camMode = (player.camMode + 1) % 2;
+
+  // Переключение схемы управления вертолётом: Аркадная / Симуляция (Раздел 3.2)
+  if (e.code === 'KeyM' && player.inVehicle && player.inVehicle.spec.type === 'heli') {
+    const h = player.inVehicle;
+    h.flightMode = h.flightMode === 'arcade' ? 'sim' : 'arcade';
+    showToast(`🚁 Схема полёта вертолёта: <b>${h.flightMode === 'arcade' ? 'Аркадная (авто-стабилизация)' : 'Симуляция (без стабилизации)'}</b>`);
+  }
+
+  // Тест отказа хвостового винта вертолёта (Раздел 3.4, 3.5)
+  if (e.code === 'KeyK' && player.inVehicle && player.inVehicle.spec.type === 'heli') {
+    player.inVehicle.tailRotorBroken = !player.inVehicle.tailRotorBroken;
+    showToast(player.inVehicle.tailRotorBroken
+      ? '⚠️ <b>Отказ хвостового винта!</b> Неуправляемое вращение вокруг оси — компенсируйте педалями Q/E и сажайте аппарат!'
+      : '✅ Хвостовой винт восстановлен.');
+  }
+
+  // Включение поискового прожектора вертолёта (Раздел 3.1)
+  if (e.code === 'KeyL' && player.inVehicle && player.inVehicle.searchLight) {
+    const sl = player.inVehicle.searchLight;
+    sl.intensity = sl.intensity > 0 ? 0 : 12;
+  }
+
+  // Прыжок пешком / Запрыгивание на полозья вертолёта / Раскрытие парашюта / Трюк в скейт-парке
+  if (e.code === 'Space' && !player.inVehicle && !player.deadOrBusted) {
+    if (player.airborne && playerHuman.mesh.position.y > 7 && !player.parachuteOpen) {
+      player.parachuteOpen = true;
+      playerHuman.chute.visible = true;
+      showToast('🪂 <b>Парашют раскрыт!</b> Скорость снижения стабилизирована до безопасных 5 м/с.');
+    } else if (!player.airborne && player.stunTimer <= 0) {
+      player.airborne = true;
+      player.vy = 6.8;
+      // Проверяем, не запрыгнул ли игрок на корпус/лыжи вертолёта (Раздел 3.3)
+      const heli = vehicles.find(v => v.spec.type === 'heli' && v.mesh.position.distanceTo(playerHuman.mesh.position) < 4.5);
+      if (heli) {
+        player.standingOnHeli = heli;
+        showToast('🚁 Вы запрыгнули на полозья вертолёта! При взлёте выше 3 м вас сбросит потоком воздуха.');
+      }
+    }
+  }
+
+  // Контекстное действие E (Аттракционы, Аудио-гид Кремля, Гараж ремонта)
+  if (e.code === 'KeyE') {
+    if (ridingFerrisCabin) {
+      interactiveSpots[1].action();
+      return;
+    }
+    const pPos = (player.inVehicle ? player.inVehicle.mesh : playerHuman.mesh).position;
+    const spot = interactiveSpots.find(s => Math.hypot(s.x - pPos.x, s.z - pPos.z) < s.r);
+    if (spot) spot.action();
+  }
+
+  // Полноэкранная карта (P или Tab — Раздел 5.4)
+  if (e.code === 'KeyP' || e.code === 'Tab') {
+    e.preventDefault();
+    const modal = document.getElementById('big-map-modal');
+    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+  }
+
+  // Спавн транспорта 1..0 с контролем пула памяти (не более 6 деформируемых спавнов — Раздел 2, 4.7)
+  const specByKey = VEHICLE_SPECS.find(s => s.key === e.code);
+  if (specByKey) {
+    const ref = player.inVehicle ? player.inVehicle.mesh : playerHuman.mesh;
+    const sx = ref.position.x + Math.sin(ref.rotation.y) * 7.5;
+    const sz = ref.position.z + Math.cos(ref.rotation.y) * 7.5;
+    const newVeh = spawnVehicle(specByKey, sx, sz, ref.rotation.y);
+    if (specByKey.type === 'heli') newVeh.rotorRPM = 1.0; // Готов к тесту полёта
+    spawnedByUserPool.push(newVeh);
+    if (spawnedByUserPool.length > 6) {
+      const old = spawnedByUserPool.shift();
+      if (old !== player.inVehicle) {
+        scene.remove(old.mesh);
+        const idx = vehicles.indexOf(old);
+        if (idx !== -1) vehicles.splice(idx, 1);
+      }
+    }
+  }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// Touch controls dispatch keyboard events so desktop and mobile share the same game logic.
+(() => {
+  const root = document.getElementById('mobile-controls');
+  const base = document.getElementById('stick-base');
+  const knob = document.getElementById('stick-knob');
+  const held = new Set(), joyKeys = new Set();
+  let pointer = null, center = null;
+  const names = {KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ShiftLeft:'Shift',Space:' ',KeyF:'f',KeyE:'e',KeyV:'v',KeyP:'p',Digit1:'1',Digit0:'0',KeyL:'l'};
+  function dispatch(code,down){window.dispatchEvent(new KeyboardEvent(down?'keydown':'keyup',{key:names[code]||code,code,bubbles:true,cancelable:true,repeat:false,view:window}));}
+  function hold(code){if(!held.has(code)){held.add(code);dispatch(code,true);}}
+  function release(code){if(held.has(code)){held.delete(code);dispatch(code,false);}}
+  function tap(code){dispatch(code,true);dispatch(code,false);}
+  function update(e){
+    if(!center)return;
+    const dx=e.clientX-center.x,dy=e.clientY-center.y,max=34;
+    knob.style.transform='translate('+Math.max(-max,Math.min(max,dx))+'px, '+Math.max(-max,Math.min(max,dy))+'px)';
+    const next=new Set();
+    if(dy < -13)next.add('KeyW');if(dy > 15)next.add('KeyS');
+    if(dx < -15)next.add('KeyA');if(dx > 15)next.add('KeyD');
+    for(const c of joyKeys)if(!next.has(c))release(c);
+    for(const c of next)if(!joyKeys.has(c))hold(c);
+    joyKeys.clear();next.forEach(c=>joyKeys.add(c));
+  }
+  function endJoy(){pointer=null;center=null;joyKeys.forEach(release);joyKeys.clear();knob.style.transform='translate(0,0)';}
+  base.addEventListener('pointerdown',e=>{e.preventDefault();pointer=e.pointerId;const r=base.getBoundingClientRect();center={x:r.left+r.width/2,y:r.top+r.height/2};try{base.setPointerCapture(e.pointerId)}catch(_){}update(e)});
+  base.addEventListener('pointermove',e=>{if(e.pointerId===pointer){e.preventDefault();update(e)}});
+  base.addEventListener('pointerup',e=>{if(e.pointerId===pointer)endJoy()});
+  base.addEventListener('pointercancel',endJoy);base.addEventListener('lostpointercapture',endJoy);
+  root.querySelectorAll('[data-hold],[data-tap]').forEach(btn=>{
+    const holdKey=btn.dataset.hold,tapKey=btn.dataset.tap;let id=null;
+    btn.addEventListener('pointerdown',e=>{e.preventDefault();id=e.pointerId;btn.classList.add('active');if(holdKey){hold(holdKey);try{btn.setPointerCapture(e.pointerId)}catch(_){}}else if(tapKey)tap(tapKey)});
+    const finish=e=>{if(id===null||(e&&e.pointerId!==undefined&&e.pointerId!==id))return;if(holdKey)release(holdKey);id=null;btn.classList.remove('active')};
+    btn.addEventListener('pointerup',finish);btn.addEventListener('pointercancel',finish);btn.addEventListener('lostpointercapture',finish);btn.addEventListener('contextmenu',e=>e.preventDefault());
+  });
+  window.addEventListener('blur',()=>{Array.from(held).forEach(release);endJoy();root.querySelectorAll('.active').forEach(el=>el.classList.remove('active'))});
+  document.addEventListener('touchmove',e=>{if(e.target.closest&&e.target.closest('#mobile-controls'))e.preventDefault()},{passive:false});
+})();
+
+// Кнопки верхней панели (Погода, Время суток, Качество графики, Карта)
+document.getElementById('btn-weather').addEventListener('click', () => {
+  worldState.weatherIndex = (worldState.weatherIndex + 1) % 4;
+  const w = worldState.weatherIndex;
+  document.getElementById('btn-weather').textContent = 'Погода: ' + ['Ясно', 'Дождь', 'Туман', 'Снег'][w];
+  worldState.gripMultiplier = w === 1 ? 0.65 : (w === 3 ? 0.58 : 1.0);
+  roadMat.roughness = w === 1 ? 0.18 : 0.8; // Мокрый зеркальный асфальт в дождь!
+  precipPoints.visible = (w === 1 || w === 3);
+  precipMat.color.setHex(w === 3 ? 0xffffff : 0x90caf9);
+  scene.fog.density = w === 2 ? 0.0045 : 0.0011;
+});
+
+document.getElementById('btn-time').addEventListener('click', () => {
+  worldState.timeOfDay = worldState.timeOfDay >= 18 ? 13.0 : 22.0;
+  const isNight = worldState.timeOfDay >= 20 || worldState.timeOfDay < 6;
+  document.getElementById('btn-time').textContent = isNight ? 'Время: Ночь (22:00)' : 'Время: День (13:00)';
+  scene.background.setHex(isNight ? 0x09101d : 0x7ec0ee);
+  scene.fog.color.setHex(isNight ? 0x09101d : 0x7ec0ee);
+  sunLight.intensity = isNight ? 0.22 : 1.85;
+  hemiLight.intensity = isNight ? 0.2 : 0.65;
+});
+
+document.getElementById('btn-quality').addEventListener('click', () => {
+  worldState.qualityIndex = (worldState.qualityIndex + 1) % 4;
+  const q = worldState.qualityIndex;
+  document.getElementById('btn-quality').textContent = 'Графика: ' + worldState.qualityNames[q];
+  renderer.setPixelRatio(q === 0 ? 0.75 : (q === 1 ? 1.0 : Math.min(window.devicePixelRatio, 2)));
+  renderer.shadowMap.enabled = q > 0;
+});
+
+document.getElementById('btn-map').addEventListener('click', () => {
+  document.getElementById('big-map-modal').style.display = 'flex';
+});
+document.getElementById('btn-close-map').addEventListener('click', () => {
+  document.getElementById('big-map-modal').style.display = 'none';
+});
+
+// Точки быстрого перемещения (Fast Travel) по особым локациям ТЗ
+const TP_COORDS = {
+  kremlin:   { x: KREMLIN_X, z: KREMLIN_Z + 62, label: '🏰 Красная площадь и Московский Кремль' },
+  amusement: { x: PARK_X - 18, z: PARK_Z - 8, label: '🎡 Парк аттракционов (Колесо обозрения 30 м)' },
+  skate:     { x: PARK_X, z: PARK_Z + 22, label: '🛹 Скейт-парк и рампы' },
+  bridge:    { x: RIVER_X - 28, z: 67, y: 19.2, label: '🌉 Вершина Большого вантового моста' },
+  helipad:   { x: 92, z: 48, label: '🚁 Вертолётная площадка Falcon-X' },
+  crashzone: { x: 62, z: 65, label: '💥 Полигон краш-теста (5 стадий FFD бампера)' },
+  garage:    { x: 35, z: 52, label: '🔧 Гараж ремонта и тюнинга Pay & Spray' },
+  hospital:  { x: -STEP / 2, z: 50, label: '🏥 Городская больница и Полицейский участок' }
+};
+
+document.querySelectorAll('.tp-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const dest = TP_COORDS[card.dataset.tp];
+    if (!dest) return;
+    if (player.inVehicle) toggleVehicle(true);
+    ridingFerrisCabin = null;
+    playerHuman.mesh.position.set(dest.x, dest.y || 0.3, dest.z);
+    player.vy = 0; player.airborne = false;
+    document.getElementById('big-map-modal').style.display = 'none';
+    showToast(`📍 Быстрое перемещение: <b>${dest.label}</b>`);
+  });
+});
+
+// ============================================================================
+// МОДУЛЬ 11: ФИЗИЧЕСКИЕ КОЛЛИЗИИ И РЕЛЬЕФ ПОВЕРХНОСТЕЙ
+// ============================================================================
+function getGroundHeightAt(x, z) {
+  let maxH = 0.3;
+  for (const p of platforms) {
+    if (Math.abs(x - p.x) < p.hw && Math.abs(z - p.z) < p.hd) {
+      maxH = Math.max(maxH, p.y);
+    }
+  }
+  return maxH;
+}
+
+function checkObstacleCollision(x, z, radius, isPedestrian = false) {
+  for (const c of colliders) {
+    if (isPedestrian && c.isBollard) continue; // Пешеход свободно проходит сквозь болларды в Кремль!
+    if (Math.abs(x - c.x) < c.hw + radius && Math.abs(z - c.z) < c.hd + radius) return c;
+  }
+  return null;
+}
+
+// ============================================================================
+// МОДУЛЬ 12: ФИКСИРОВАННЫЙ ШАГ ФИЗИКИ 60 ГЦ (Раздел 10.1, 10.2 ТЗ)
+// ============================================================================
+const FIXED_DT = 1 / 60;
+let accumulator = 0;
+let totalTime = 0;
+
+function stepPhysics(dt) {
+  totalTime += dt;
+  grassUniforms.uTime.value = totalTime;
+  activeMixers.forEach(m => m.update(dt));
+
+  // Вращение Колеса обозрения (30 м) и Карусели с лошадками (Раздел 8.2)
+  if (ferrisWheelRing) {
+    ferrisWheelRing.rotation.z += 0.22 * dt;
+    // Кабинки сохраняют вертикаль с лёгким физическим покачиванием
+    ferrisCabins.forEach((cab, idx) => {
+      cab.rotation.z = -ferrisWheelRing.rotation.z + Math.sin(totalTime * 2.2 + idx) * 0.08;
+    });
+    if (ridingFerrisCabin) {
+      const wp = new THREE.Vector3();
+      ridingFerrisCabin.getWorldPosition(wp);
+      playerHuman.mesh.position.set(wp.x, wp.y - 1.2, wp.z);
+    }
+  }
+  if (carouselPlatform) carouselPlatform.rotation.y += 0.85 * dt;
+
+  // Осадки (дождь / снег) вокруг камеры
+  if (precipPoints.visible) {
+    const pos = precipGeo.attributes.position;
+    for (let i = 0; i < PRECIP_COUNT; i++) {
+      let py = pos.getY(i) - (worldState.weatherIndex === 3 ? 6 : 26) * dt;
+      if (py < 0) py = 55;
+      pos.setY(i, py);
+    }
+    pos.needsUpdate = true;
+    precipPoints.position.set(camera.position.x, 0, camera.position.z);
+  }
+
+  // Светофоры
+  const lightCycle = Math.floor(totalTime / 6) % 2;
+  trafficLights.forEach(tl => {
+    const green = lightCycle === tl.phaseOffset;
+    tl.rMat.color.setHex(green ? 0x330000 : 0xff1744);
+    tl.gMat.color.setHex(green ? 0x00e676 : 0x003300);
+  });
+
+  // Регенерация здоровья игрока до 50% (Раздел 5.3)
+  if (!player.deadOrBusted && player.hp > 0 && player.hp < 50) {
+    player.hp = Math.min(50, player.hp + 2.2 * dt);    updateHUD();
+  }
+
+  // Логика зоны поиска и спада звёзд (Раздел 5.1)
+  const activePlayerPos = (player.inVehicle ? player.inVehicle.mesh : playerHuman.mesh).position;
+  if (player.wanted > 0) {
+    const distFromSearch = activePlayerPos.distanceTo(player.searchCenter);
+    let spottedByPolice = false;
+    vehicles.forEach(v => {
+      if (v.isCop && v.mesh.position.distanceTo(activePlayerPos) < 52) spottedByPolice = true;
+    });
+    if (spottedByPolice) {
+      player.searchCenter.copy(activePlayerPos);
+      player.evadeTimer = 28;
+      document.getElementById('stars').classList.remove('star-evade');
+    } else if (distFromSearch > player.searchRadius) {
+      document.getElementById('stars').classList.add('star-evade');
+      player.evadeTimer -= dt;
+      if (player.evadeTimer <= 0) {
+        player.wanted = 0;
+        document.getElementById('stars').classList.remove('star-evade');
+        updateHUD();
+        showToast('✅ Вы скрылись из зоны поиска полиции! Уровень розыска снят.');
+      }
+    }
+  }
+
+  // --- УПРАВЛЕНИЕ ПЕШКОМ, НАХОЖДЕНИЕ НА КОРПУСЕ ВЕРТОЛЁТА И ФИЗИКА ПАДЕНИЯ (Раздел 3.3) ---
+  if (!player.inVehicle && !ridingFerrisCabin && !player.deadOrBusted) {
+    if (player.stunTimer > 0) {
+      player.stunTimer -= dt;
+      playerHuman.mesh.rotation.x = -Math.PI / 3;
+    } else {
+      playerHuman.mesh.rotation.x = 0;
+    }
+
+    // Если игрок стоит на полозьях/корпусе вертолёта, который взлетает (Раздел 3.3)
+    if (player.standingOnHeli) {
+      const h = player.standingOnHeli;
+      playerHuman.mesh.position.x = h.mesh.position.x;
+      playerHuman.mesh.position.z = h.mesh.position.z;
+      playerHuman.mesh.position.y = h.mesh.position.y + 1.2;
+      if (h.mesh.position.y > 3.2 || Math.abs(h.speed) > 6) {
+        // Соскальзывание с корпуса взлетающего вертолёта!
+        player.standingOnHeli = null;
+        player.airborne = true;
+        player.vy = h.vy - 2;
+        player.vx = -Math.sin(h.mesh.rotation.y) * 5;
+        player.vz = -Math.cos(h.mesh.rotation.y) * 5;
+        showToast('⚠️ Вы соскользнули с корпуса взлетающего вертолёта!');
+      }
+    } else if (player.airborne) {
+      // Полноценная баллистика свободного падения с гравитацией g = 9.81 м/с²
+      const grav = player.parachuteOpen ? 2.5 : 9.81;
+      player.vy -= grav * dt;
+      if (player.parachuteOpen) player.vy = Math.max(player.vy, -5.2);
+
+      playerHuman.mesh.position.x += player.vx * dt;
+      playerHuman.mesh.position.z += player.vz * dt;
+      playerHuman.mesh.position.y += player.vy * dt;
+
+      const groundY = getGroundHeightAt(playerHuman.mesh.position.x, playerHuman.mesh.position.z);
+      if (playerHuman.mesh.position.y <= groundY) {
+        playerHuman.mesh.position.y = groundY;
+        const impactVel = Math.abs(player.vy);
+        player.airborne = false;
+        player.vy = 0; player.vx = 0; player.vz = 0;
+        player.parachuteOpen = false;
+        playerHuman.chute.visible = false;
+
+        // Проверка падения в глубокую воду реки (снижает урон на 80% — Таблица 3.3 ТЗ!)
+        const inRiver = Math.abs(playerHuman.mesh.position.x - RIVER_X) < 52;
+        const waterFactor = inRiver ? 0.2 : 1.0;
+
+        // Точный расчёт по Таблице 3.3 ТЗ:
+        if (impactVel <= 8.0) {
+          // до 8 м/с (≈ 3 м высоты) — без урона
+          if (impactVel > 4.5) showToast(`🟢 Приземление (${impactVel.toFixed(1)} м/с ≤ 8 м/с): без урона.`);
+        } else if (impactVel <= 15.0) {
+          // 8–15 м/с — лёгкий урон
+          const dmg = 22 * waterFactor;
+          damagePlayer(dmg, 'Жёсткое приземление');
+          showToast(`🟡 Жёсткое приземление (${impactVel.toFixed(1)} м/с): лёгкий урон (-${Math.round(dmg)} HP).`);
+        } else if (impactVel <= 25.0) {
+          // 15–25 м/с — тяжёлый урон и оглушение 2–3 с
+          const dmg = 62 * waterFactor;
+          player.stunTimer = 2.5;
+          damagePlayer(dmg, 'Падение с большой высоты');
+          showToast(`🟠 Тяжёлое падение (${impactVel.toFixed(1)} м/с): оглушение 2.5 с (-${Math.round(dmg)} HP).`);
+        } else {
+          // свыше 25 м/с (или выход на высоте ≥ 20 м) — смерть / рэгдолл
+          const dmg = 120 * waterFactor;
+          damagePlayer(dmg, `Смертельное падение со скоростью ${impactVel.toFixed(1)} м/с`);
+        }
+      }
+    } else if (player.stunTimer <= 0) {
+      // Обычное передвижение пешком (или на скейте в скейт-парке)
+      const inSkatePark = Math.hypot(playerHuman.mesh.position.x - PARK_X, playerHuman.mesh.position.z - (PARK_Z + 26)) < 38;
+      let moveSpeed = 0;
+      const topSpeed = inSkatePark ? 15.5 : ((keys['ShiftLeft'] || keys['ShiftRight']) ? 10.6 : 5.2);
+      if (keys['KeyW'] || keys['ArrowUp']) moveSpeed = topSpeed;
+      if (keys['KeyS'] || keys['ArrowDown']) moveSpeed = -4.0;
+      if (keys['KeyA'] || keys['ArrowLeft']) playerHuman.mesh.rotation.y += 3.2 * dt;
+      if (keys['KeyD'] || keys['ArrowRight']) playerHuman.mesh.rotation.y -= 3.2 * dt;
+
+      const nx = playerHuman.mesh.position.x + Math.sin(playerHuman.mesh.rotation.y) * moveSpeed * dt;
+      const nz = playerHuman.mesh.position.z + Math.cos(playerHuman.mesh.rotation.y) * moveSpeed * dt;
+      if (!checkObstacleCollision(nx, nz, 0.45, true)) {
+        playerHuman.mesh.position.x = nx;
+        playerHuman.mesh.position.z = nz;
+        playerHuman.mesh.position.y = getGroundHeightAt(nx, nz);
+      }
+      playerHuman.animate(Math.abs(moveSpeed), totalTime);
+    }
+  }
+
+  // --- ФИЗИКА ВСЕХ ТРАНСПОРТНЫХ СРЕДСТВ И ВЕРТОЛЁТА ---
+  vehicles.forEach(v => {
+    const s = v.spec;
+    const isPlayerControlled = (player.inVehicle === v);
+
+    // Анимация дыма / пара / пламени при повреждении двигателя (Раздел 4.3, 4.5)
+    if (v.engineHP < 60 || v.frontHits >= 3) {
+      const isFire = v.engineHP < 12;
+      v.smokePuffs.forEach((p, idx) => {
+        p.material.opacity = 0.55;
+        p.material.color.setHex(isFire ? (idx % 2 ? 0xff3d00 : 0xffab00) : (v.frontHits === 3 ? 0xeeeeee : 0x333333));
+        p.position.y = ((totalTime * 2.5 + idx * 0.4) % 1.8);
+        p.scale.setScalar(0.6 + p.position.y * 0.7);
+      });
+      if (isFire && !v.exploded) {
+        v.fireTimer += dt;
+        if (v.fireTimer > 9.0) v.explode(); // Детонация через 9 секунд горения!
+      }
+    } else {
+      v.smokePuffs.forEach(p => { p.material.opacity = 0; });
+    }
+
+    if (s.type === 'heli') {
+      // --- ПОЛЁТНАЯ МОДЕЛЬ ВЕРТОЛЁТА (Раздел 3.1–3.4 ТЗ) ---
+      if (isPlayerControlled && !v.exploded) {
+        // Плавная раскрутка турбины (6-8 с) до рабочих оборотов
+        v.rotorRPM = Math.min(1.0, v.rotorRPM + dt / 6.2);
+      } else {
+        // Выбег 10 секунд при отсутствии пилота
+        v.rotorRPM = Math.max(0.0, v.rotorRPM - dt / 10.0);
+      }
+      audio.updateRotor(v.rotorRPM, isPlayerControlled || v.rotorRPM > 0.1);
+
+      // Вращение лопастей и размытие диска на высоких оборотах
+      if (v.mainRotor) v.mainRotor.rotation.y += v.rotorRPM * 32 * dt;
+      if (v.tailRotor && !v.tailRotorBroken) v.tailRotor.rotation.x += v.rotorRPM * 38 * dt;
+      if (v.rotorBlurDisk) v.rotorBlurDisk.material.opacity = Math.max(0, (v.rotorRPM - 0.55) * 0.65);
+
+      if (v.unmannedFalling && v.mesh.position.y > 0.1) {
+        // Вертолёт без пилота снижается на авторотации, заваливается и разбивается (Раздел 3.3, 3.5)
+        v.vy -= 7.8 * dt;
+        v.mesh.position.y += v.vy * dt;
+        v.mesh.position.x += Math.sin(v.mesh.rotation.y) * v.speed * dt;
+        v.mesh.position.z += Math.cos(v.mesh.rotation.y) * v.speed * dt;
+        v.mesh.rotation.y += 1.9 * dt;
+        v.roll += 0.8 * dt;
+        if (v.mesh.position.y <= 0) {
+          v.mesh.position.y = 0;
+          v.unmannedFalling = false;
+          if (Math.abs(v.vy) > 12) v.explode();
+          v.vy = 0; v.speed = 0;
+        }
+      } else if (isPlayerControlled && !v.exploded) {
+        const collective = (keys['Space'] ? 1 : 0) - ((keys['ShiftLeft'] || keys['ShiftRight']) ? 1 : 0);
+        // Экранный эффект земли (ground effect) на малой высоте и срыв потока при крене > 70°
+        const groundEffect = v.mesh.position.y < 4.5 ? 1.18 : 1.0;
+        const stallLoss = (Math.abs(v.roll) > 1.22 || Math.abs(v.pitch) > 1.22) ? 0.25 : 1.0;
+        const targetVy = v.rotorRPM > 0.45 ? (collective * 16.5 * v.rotorRPM * groundEffect * stallLoss) : -9.8;
+
+        v.vy = THREE.MathUtils.lerp(v.vy, targetVy, 2.8 * dt);
+        v.mesh.position.y = Math.min(800, Math.max(0, v.mesh.position.y + v.vy * dt));
+
+        const inAir = v.mesh.position.y > 0.35;
+        if (inAir) {
+          const fwd = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+          const side = (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0) - (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0);
+          const pedal = (keys['KeyQ'] ? 1 : 0) - (keys['KeyE'] ? 1 : 0);
+
+          v.speed = THREE.MathUtils.lerp(v.speed, fwd * s.maxSpeed, 1.9 * dt);
+          // Если сломан хвостовой винт — сильное неуправляемое вращение вокруг оси (Раздел 3.4, 3.5)
+          const tailSpin = v.tailRotorBroken ? 3.8 : 0;
+          v.mesh.rotation.y += (pedal * 2.1 + side * 0.75 + tailSpin) * dt;
+
+          if (v.flightMode === 'arcade') {
+            v.pitch = THREE.MathUtils.lerp(v.pitch, fwd * 0.28, 4.5 * dt);
+            v.roll = THREE.MathUtils.lerp(v.roll, side * 0.34, 4.5 * dt);
+          } else {
+            // Режим «Симуляция» без авто-возврата в горизонт
+            v.pitch = THREE.MathUtils.clamp(v.pitch + fwd * 0.85 * dt, -1.35, 1.35);
+            v.roll = THREE.MathUtils.clamp(v.roll + side * 0.95 * dt, -1.35, 1.35);
+          }
+
+          // Снос ветром (Раздел 3.2)
+          const nx = v.mesh.position.x + (Math.sin(v.mesh.rotation.y) * v.speed + worldState.windVec.x * 0.25) * dt;
+          const nz = v.mesh.position.z + (Math.cos(v.mesh.rotation.y) * v.speed + worldState.windVec.z * 0.25) * dt;
+
+          const hitBld = checkObstacleCollision(nx, nz, 3.2, false);
+          if (hitBld && v.mesh.position.y < hitBld.h) {
+            // Удар лопастью или хвостом о здание!
+            v.tailRotorBroken = true;
+            v.applyImpact(v.mesh.position.clone(), Math.max(14, Math.abs(v.speed)), 'front');
+            v.speed = -v.speed * 0.4;
+          } else {
+            v.mesh.position.x = nx;
+            v.mesh.position.z = nz;
+          }
+        } else {
+          if (v.vy < -20) v.explode(); // Взрыв при ударе о землю быстрее 20 м/с (Раздел 3.4)
+          v.speed *= 0.88; v.pitch *= 0.82; v.roll *= 0.82;
+        }
+      }
+      v.bodyTilt.rotation.x = v.pitch;
+      v.bodyTilt.rotation.z = v.roll;
+      return;
+    }
+
+    // --- ФИЗИКА АВТОМОБИЛЕЙ, CONSTRAINTS И ИИ ТРАФИКА (Раздел 4, 5.2) ---
+    if (isPlayerControlled && !v.exploded) {
+      let throttle = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+      const handbrake = keys['Space'];
+      v.brakeMat.color.setHex(throttle < 0 || handbrake ? 0xff1744 : 0x660000);
+
+      const powerFactor = v.engineHP > 0 ? Math.max(0.25, v.engineHP / 100) : 0;
+      const effectiveMax = s.maxSpeed * v.maxSpeedCap * powerFactor;
+
+      if (throttle !== 0 && !handbrake && v.engineHP > 0) {
+        v.speed += throttle * s.accel * powerFactor * worldState.gripMultiplier * dt;
+      } else {
+        const drag = handbrake ? 32 * worldState.gripMultiplier : 8.5;
+        if (Math.abs(v.speed) > 0.2) v.speed -= Math.sign(v.speed) * drag * dt;
+        else v.speed = 0;
+      }
+      v.speed = THREE.MathUtils.clamp(v.speed, -effectiveMax * 0.4, effectiveMax);
+
+      const steerInput = (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0) - (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0);
+      v.steer = THREE.MathUtils.lerp(v.steer, steerInput, 7.5 * dt);
+
+      if (Math.abs(v.speed) > 0.35) {
+        const speedFactor = Math.min(1, Math.abs(v.speed) / 8);
+        const driftBoost = handbrake ? 1.55 : 1.0;
+        // Учитываем увод руля (v.steeringBias) при спущенном/оторванном колесе или зажатом крыле!
+        const totalSteer = v.steer + v.steeringBias * 0.45;
+        v.mesh.rotation.y += totalSteer * s.handling * speedFactor * Math.sign(v.speed) * driftBoost * dt;
+      }
+
+      // Крен кузова и дифферент при оторванном колесе
+      const missingWheelTilt = v.wheels.some(w => w.state === 'detached') ? 0.16 : 0;
+      v.bodyTilt.rotation.z = THREE.MathUtils.lerp(v.bodyTilt.rotation.z, -v.steer * (v.speed / s.maxSpeed) * 0.15 + missingWheelTilt, 8 * dt);
+      v.bodyTilt.rotation.x = THREE.MathUtils.lerp(v.bodyTilt.rotation.x, -throttle * 0.045, 6 * dt);
+
+      v.wheels.forEach(w => {
+        if (w.state !== 'detached') {
+          w.tire.rotation.x += (v.speed / 0.41) * dt;
+          if (w.isFront) w.group.rotation.y = v.steer * 0.42;
+        }
+      });
+
+      const nx = v.mesh.position.x + Math.sin(v.mesh.rotation.y) * v.speed * dt;
+      const nz = v.mesh.position.z + Math.cos(v.mesh.rotation.y) * v.speed * dt;
+      const hitObs = checkObstacleCollision(nx, nz, s.w * 0.55, false);
+
+      if (!hitObs) {
+        v.mesh.position.x = nx;
+        v.mesh.position.z = nz;
+        v.mesh.position.y = getGroundHeightAt(nx, nz) - 0.3;
+      } else {
+        // Физическое столкновение со зданием / краш-барьером с расчётом импульса и FFD-деформации!
+        const impactVel = Math.abs(v.speed);
+        const contactPt = v.mesh.position.clone().add(
+          new THREE.Vector3(Math.sin(v.mesh.rotation.y), 0.4, Math.cos(v.mesh.rotation.y)).multiplyScalar( (v.speed >= 0 ? 1 : -1) * (s.l / 2) )
+        );
+        v.applyImpact(contactPt, impactVel, v.speed >= 0 ? 'front' : 'rear');
+        v.speed = -v.speed * 0.28;
+      }
+    } else if (v.isAI && !v.exploded) {
+      // Водители ИИ и полиция (Раздел 5.1, 5.2)
+      if (v.sirenRed && v.sirenBlue && player.wanted > 0) {
+        const fl = Math.floor(totalTime * 9) % 2 === 0;
+        v.sirenRed.material.color.setHex(fl ? 0xff1744 : 0x330000);
+        v.sirenBlue.material.color.setHex(fl ? 0x002244 : 0x0088ff);
+      }
+
+      if (v.isCop && player.wanted > 0) {
+        const dx = activePlayerPos.x - v.mesh.position.x;
+        const dz = activePlayerPos.z - v.mesh.position.z;
+        const dist = Math.hypot(dx, dz);
+        let diff = Math.atan2(dx, dz) - v.mesh.rotation.y;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        v.mesh.rotation.y += Math.sign(diff) * Math.min(Math.abs(diff), 2.8 * dt);
+        v.speed = THREE.MathUtils.lerp(v.speed, 28 + player.wanted * 2, 2 * dt);
+
+        // Арест игрока на низкой скорости (Раздел 5.3)
+        if (dist < 4.5 && (!player.inVehicle || Math.abs(player.inVehicle.speed) < 3.5)) {
+          triggerWastedOrBusted('busted');
+        }
+      } else {
+        v.speed = v.engineHP < 40 ? 0 : 14;
+      }
+
+      const nx = v.mesh.position.x + Math.sin(v.mesh.rotation.y) * v.speed * dt;
+      const nz = v.mesh.position.z + Math.cos(v.mesh.rotation.y) * v.speed * dt;
+      if (!checkObstacleCollision(nx, nz, 2.0, false)) {
+        v.mesh.position.x = nx;
+        v.mesh.position.z = nz;
+      } else {
+        v.mesh.rotation.y += Math.PI / 2;
+      }
+
+      // Столкновение машины игрока с AI-машиной (с импульсом и деформацией обеих машин!)
+      if (player.inVehicle && player.inVehicle !== v && player.inVehicle.mesh.position.y < 2.2) {
+        const pVeh = player.inVehicle;
+        const dist = v.mesh.position.distanceTo(pVeh.mesh.position);
+        if (dist < 3.6) {
+          const relSpeed = Math.abs(pVeh.speed - v.speed);
+          const midPt = v.mesh.position.clone().lerp(pVeh.mesh.position, 0.5);
+          if (relSpeed > 6.5) {
+            pVeh.applyImpact(midPt, relSpeed, 'front');
+            v.applyImpact(midPt, relSpeed, 'front');
+            reportCrime(midPt, v.isCop ? 2 : 1, 'ДТП / Таран');
+          }
+          const push = pVeh.mesh.position.clone().sub(v.mesh.position).normalize().multiplyScalar(0.45);
+          pVeh.mesh.position.add(push);
+          v.mesh.position.sub(push);
+          pVeh.speed *= 0.45;
+        }
+      }
+    }
+  });
+
+  // Физика оторванных колёс и деталей (Раздел 4.4)
+  for (let i = detachedParts.length - 1; i >= 0; i--) {
+    const dp = detachedParts[i];
+    dp.ttl -= dt;
+    dp.vy -= 9.81 * dt;
+    dp.mesh.position.x += dp.vx * dt;
+    dp.mesh.position.y += dp.vy * dt;
+    dp.mesh.position.z += dp.vz * dt;
+    dp.mesh.rotation.x += 6 * dt;
+    if (dp.mesh.position.y < 0.35) {
+      dp.mesh.position.y = 0.35;
+      dp.vy = -dp.vy * 0.45;
+      dp.vx *= 0.92; dp.vz *= 0.92;
+    }
+    if (dp.ttl <= 0) {
+      scene.remove(dp.mesh);
+      detachedParts.splice(i, 1);
+    }
+  }
+
+  // Пешеходы и таймер звонка свидетелей в полицию (Раздел 5.1, 5.2)
+  pedestrians.forEach(p => {
+    if (!p.alive) return;
+    if (p.callingPoliceTimer > 0) {
+      p.callingPoliceTimer -= dt;
+      if (p.callingPoliceTimer <= 0) {
+        activateWanted(activePlayerPos, 1);
+        showToast('🚓 Свидетель сообщил ваши приметы! Объявлен розыск.');
+      }
+    }
+    p.timer -= dt;
+    if (p.timer <= 0) { p.dir += (Math.random() - 0.5) * 1.4; p.timer = 3.5; }
+    const nx = p.mesh.position.x + Math.sin(p.dir) * p.speed * dt;
+    const nz = p.mesh.position.z + Math.cos(p.dir) * p.speed * dt;
+    if (!checkObstacleCollision(nx, nz, 0.5, true)) {
+      p.mesh.position.x = nx; p.mesh.position.z = nz; p.mesh.rotation.y = p.dir;
+    } else {
+      p.dir += Math.PI;
+    }
+    p.human.animate(p.speed, totalTime);
+
+    // Наезд на пешехода с проверкой свидетелей (Раздел 5.1)
+    if (player.inVehicle && player.inVehicle.mesh.position.y < 1.5 && Math.abs(player.inVehicle.speed) > 5.5) {
+      if (p.mesh.position.distanceTo(player.inVehicle.mesh.position) < 2.2) {
+        p.alive = false;
+        p.callingPoliceTimer = 0;
+        p.mesh.rotation.x = -Math.PI / 2;
+        p.mesh.position.y = 0.2;
+        reportCrime(p.mesh.position, p.isPolice ? 3 : 1, 'Наезд на пешехода');
+      }
+    }
+  });
+}
+
+// ============================================================================
+// МОДУЛЬ 13: РАДАР С КРУГОМ ПОИСКА И ДИАГНОСТИЧЕСКИЙ HUD (Раздел 5.4)
+// ============================================================================
+const radarCanvas = document.getElementById('radar');
+const rCtx = radarCanvas.getContext('2d');
+
+function updateTelemetryAndRadar() {
+  const target = player.inVehicle ? player.inVehicle.mesh : playerHuman.mesh;
+  const px = target.position.x, pz = target.position.z;
+
+  // Определение текущей локации для баннера
+  let locName = '📍 Центральный мегаполис';
+  if (pz < -240) locName = '🏰 Московский Кремль и Красная площадь';
+  else if (px > 280) locName = '🌉 Большой вантовый мост и Набережная';
+  else if (px > 130 && pz > 0) locName = '🎡 Парк аттракционов и Скейт-парк';
+  else if (px < 0 && pz > 0) locName = '🏥 Больница и Полицейский участок';
+  document.getElementById('loc-banner').textContent = locName;
+
+  // Контекстные подсказки
+  const promptEl = document.getElementById('prompt');
+  const nearSpot = interactiveSpots.find(s => Math.hypot(s.x - px, s.z - pz) < s.r);
+  if (nearSpot) {
+    promptEl.style.display = 'block';
+    promptEl.innerHTML = nearSpot.label;
+  } else if (!player.inVehicle) {
+    const nearVeh = vehicles.find(v => !v.exploded && v.mesh.position.distanceTo(playerHuman.mesh.position) < 5.8);
+    if (nearVeh) {
+      promptEl.style.display = 'block';
+      promptEl.innerHTML = `Нажмите <span class="key">F</span> — Сесть в <b style="color:#ffca28">${nearVeh.spec.name}</b>`;
+    } else {
+      promptEl.style.display = 'none';
+    }
+  } else {
+    promptEl.style.display = 'none';
+  }
+
+  // Спидометр с честным множителем ×3.6 (Раздел 2, 5.4 ТЗ) и диагностика узлов
+  if (player.inVehicle) {
+    const v = player.inVehicle;
+    const kmh = Math.round(Math.abs(v.speed) * 3.6);
+    document.getElementById('speed-val').textContent = kmh;
+    document.getElementById('gear-val').textContent = v.spec.type === 'heli'
+      ? `ВЫСОТА ${v.mesh.position.y.toFixed(1)} М`
+      : (v.speed < -0.5 ? 'R' : 'D');
+
+    const engEl = document.getElementById('dg-eng');
+    engEl.textContent = Math.round(v.engineHP) + '%';
+    engEl.className = v.engineHP > 60 ? 'diag-ok' : (v.engineHP > 25 ? 'diag-warn' : 'diag-bad');
+
+    const bodyEl = document.getElementById('dg-body');
+    bodyEl.textContent = `Стадия ${v.frontHits}/5`;
+    bodyEl.className = v.frontHits <= 1 ? 'diag-ok' : (v.frontHits <= 3 ? 'diag-warn' : 'diag-bad');
+
+    const whEl = document.getElementById('dg-wh');
+    if (v.spec.type === 'heli') {
+      whEl.textContent = v.tailRotorBroken ? 'ХВОСТ СЛОМАН' : `Обороты ${Math.round(v.rotorRPM * 100)}%`;
+      whEl.className = v.tailRotorBroken ? 'diag-bad' : 'diag-ok';
+      document.getElementById('dg-mode').textContent = v.flightMode === 'arcade' ? 'Аркада (M)' : 'Симуляция (M)';
+    } else {
+      const okW = v.wheels.filter(w => w.state === 'ok').length;
+      whEl.textContent = `${okW}/${v.wheels.length} ОК`;
+      whEl.className = okW === v.wheels.length ? 'diag-ok' : (okW >= 2 ? 'diag-warn' : 'diag-bad');
+      document.getElementById('dg-mode').textContent = v.steeringBias !== 0 ? 'Увод руля!' : 'Штатно';
+    }
+  }
+
+  // Отрисовка радара с кругом зоны розыска (Раздел 5.1, 5.4)
+  rCtx.fillStyle = '#101923';
+  rCtx.fillRect(0, 0, 230, 165);
+  const scale = 0.42;
+
+  rCtx.save();
+  rCtx.translate(115, 82);
+  rCtx.rotate(target.rotation.y - Math.PI);
+
+  // Река на радаре
+  rCtx.fillStyle = '#0277bd';
+  rCtx.fillRect((RIVER_X - 55 - px) * scale, (-700 - pz) * scale, 110 * scale, 1400 * scale);
+
+  // Московский Кремль на радаре
+  rCtx.fillStyle = '#8b261d';
+  rCtx.fillRect((KREMLIN_X - 85 - px) * scale, (KREMLIN_Z - 95 - pz) * scale, 170 * scale, 130 * scale);
+
+  // Круг зоны поиска полиции (Раздел 5.1)
+  if (player.wanted > 0) {
+    const sx = (player.searchCenter.x - px) * scale;
+    const sz = (player.searchCenter.z - pz) * scale;
+    rCtx.beginPath();
+    rCtx.arc(sx, sz, player.searchRadius * scale, 0, Math.PI * 2);
+    rCtx.fillStyle = Math.floor(performance.now() / 350) % 2 ? 'rgba(255, 23, 68, 0.24)' : 'rgba(41, 121, 255, 0.24)';
+    rCtx.fill();
+    rCtx.strokeStyle = '#ff5252';
+    rCtx.lineWidth = 1.5;
+    rCtx.stroke();
+  }
+
+  // Транспорт на радаре
+  vehicles.forEach(v => {
+    if (v === player.inVehicle) return;
+    const vx = (v.mesh.position.x - px) * scale;
+    const vz = (v.mesh.position.z - pz) * scale;
+    if (Math.abs(vx) < 115 && Math.abs(vz) < 85) {
+      rCtx.fillStyle = v.isCop ? '#2979ff' : (v.spec.type === 'heli' ? '#00e5ff' : '#ffca28');
+      rCtx.fillRect(vx - 2.5, vz - 2.5, 5, 5);
+    }
+  });
+  rCtx.restore();
+
+  // Метка игрока
+  rCtx.fillStyle = '#00e5ff';
+  rCtx.beginPath();
+  rCtx.moveTo(115, 74); rCtx.lineTo(109, 87); rCtx.lineTo(121, 87);
+  rCtx.closePath(); rCtx.fill();
+}
+
+// ============================================================================
+// ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
+// ============================================================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const frameDt = Math.min(clock.getDelta(), 0.1);
+  accumulator += frameDt;
+
+  while (accumulator >= FIXED_DT) {
+    stepPhysics(FIXED_DT);
+    accumulator -= FIXED_DT;
+  }
+
+  // Плавная камера слежения (с поддержкой полёта, Колеса обозрения и падения)
+  const targetObj = player.inVehicle ? player.inVehicle.mesh : playerHuman.mesh;
+  const isHeli = player.inVehicle && player.inVehicle.spec.type === 'heli';
+  const camDist = player.camMode === 1 ? 18 : (isHeli ? 15.5 : player.inVehicle ? 10.2 : 5.8);
+  const camHeight = player.camMode === 1 ? 8.5 : (isHeli ? 6.2 : player.inVehicle ? 3.5 : 2.5);
+
+  const idealX = targetObj.position.x - Math.sin(targetObj.rotation.y) * camDist;
+  const idealZ = targetObj.position.z - Math.cos(targetObj.rotation.y) * camDist;
+  const idealY = Math.max(0.8, targetObj.position.y + camHeight);
+
+  camera.position.lerp(new THREE.Vector3(idealX, idealY, idealZ), 10 * frameDt);
+  camera.lookAt(targetObj.position.x, targetObj.position.y + 1.35, targetObj.position.z);
+
+  updateTelemetryAndRadar();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 animate();
-}
 </script>
 </body>
 </html>

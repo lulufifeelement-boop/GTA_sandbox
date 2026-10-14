@@ -30,6 +30,45 @@ jobs:
           test -s game.html
           cp game.html _site/game.html
           if [ -d assets ]; then cp -R assets _site/assets; fi
+          # Fetch game-ready CC0 vehicles into the same-origin Pages bundle.
+          # Missing downloads are non-fatal: the game has local fallback models.
+          mkdir -p _site/assets/vehicles
+          fetch_glb() {
+            local url="$1"
+            local dest="$2"
+            if curl --fail --location --silent --show-error --retry 2 --connect-timeout 15 --max-time 120 "$url" -o "$dest"; then
+              if [ "$(head -c 4 "$dest" || true)" != "glTF" ]; then
+                echo "Warning: invalid GLB payload from $url" >&2
+                rm -f "$dest"
+              else
+                echo "Bundled $dest ($(wc -c < "$dest") bytes)"
+              fi
+            else
+              echo "Warning: could not download $url; fallback model will be used" >&2
+              rm -f "$dest"
+            fi
+          }
+          fetch_glb "https://grab3d.com/dl/sedan/sedan.glb" "_site/assets/vehicles/sedan.glb"
+          fetch_glb "https://grab3d.com/dl/sports-car/sports-car.glb" "_site/assets/vehicles/sports-car.glb"
+          fetch_glb "https://grab3d.com/dl/hatchback/hatchback.glb" "_site/assets/vehicles/hatchback.glb"
+          fetch_glb "https://grab3d.com/dl/classic-car/classic-car.glb" "_site/assets/vehicles/classic-car.glb"
+          fetch_glb "https://grab3d.com/dl/suv/suv.glb" "_site/assets/vehicles/suv.glb"
+          fetch_glb "https://grab3d.com/dl/police-car/police-car.glb" "_site/assets/vehicles/police-car.glb"
+          fetch_glb "https://grab3d.com/dl/dump-truck/dump-truck.glb" "_site/assets/vehicles/dump-truck.glb"
+          fetch_glb "https://grab3d.com/dl/garbage-truck/garbage-truck.glb" "_site/assets/vehicles/garbage-truck.glb"
+          cat > _site/assets/vehicles/SOURCES.txt <<'EOF'
+          All vehicle GLB files in this directory are by Grab3D's Cozy Vehicles Kit, released under CC0 1.0.
+          They are fetched at deploy time from https://grab3d.com/dl/<model>/<model>.glb .
+          Models: sedan, sports-car, hatchback, classic-car, suv, police-car, dump-truck, garbage-truck.
+          License/source pages: https://grab3d.com/models/vehicles/sedan/
+          https://grab3d.com/models/vehicles/sports-car/
+          https://grab3d.com/models/vehicles/hatchback/
+          https://grab3d.com/models/vehicles/classic-car/
+          https://grab3d.com/models/vehicles/suv/
+          https://grab3d.com/models/vehicles/police-car/
+          https://grab3d.com/models/vehicles/dump-truck/
+          https://grab3d.com/models/vehicles/garbage-truck/
+          EOF
           test -s _site/game.html
           cat > _site/index.html <<'EOF'
           <!doctype html>

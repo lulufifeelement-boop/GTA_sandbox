@@ -186,12 +186,19 @@ for(let i=0;i<(IS_MOBILE?10:18);i++){const isCop=i<(IS_MOBILE?2:4),spec=isCop?VE
 
 
 // 4.5. CC0 GLB asset upgrade. Procedural models stay visible if any asset fails to load.
-const ASSET_BASE='https://raw.githubusercontent.com/Hidencod/tge-assets/main/';
+const ASSET_BASE='./assets/kenney/';
 const assetLoader=THREE.GLTFLoader?new THREE.GLTFLoader():null;
 const gltfPromises=new Map();
 function loadGltf(path){
  if(!assetLoader)return Promise.reject(new Error('GLTFLoader is unavailable'));
- if(!gltfPromises.has(path))gltfPromises.set(path,new Promise((resolve,reject)=>assetLoader.load(ASSET_BASE+path,gltf=>resolve(gltf.scene),undefined,reject)));
+ if(!gltfPromises.has(path))gltfPromises.set(path,(async()=>{
+  const response=await fetch(ASSET_BASE+path+'.b64');
+  if(!response.ok)throw new Error('Asset request failed ('+response.status+'): '+path);
+  const encoded=(await response.text()).replace(/\s/g,'');
+  const binary=atob(encoded),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return await new Promise((resolve,reject)=>assetLoader.parse(bytes.buffer,'',gltf=>resolve(gltf.scene),reject));
+ })());
  return gltfPromises.get(path);
 }
 function fittedAsset(template,w,h,d,x=0,z=0,groundY=0,uniform=true){

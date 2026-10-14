@@ -191,18 +191,24 @@ const assetLoader=THREE.GLTFLoader?new THREE.GLTFLoader():null;
 const gltfPromises=new Map();
 function loadGltf(path){
  if(!assetLoader)return Promise.reject(new Error('GLTFLoader is unavailable'));
- if(!gltfPromises.has(path))gltfPromises.set(path,(async()=>{
-  const response=await fetch(ASSET_BASE+path+'.b64');
-  if(!response.ok)throw new Error('Asset request failed ('+response.status+'): '+path);
-  const encoded=(await response.text()).replace(/\s/g,'');
-  const binary=atob(encoded),bytes=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  return await new Promise((resolve,reject)=>assetLoader.parse(bytes.buffer,'',gltf=>resolve(gltf.scene),reject));
+ if(!gltfPromises.has(path))gltfPromises.set(path,(()=>{
+  if(path.startsWith('@vehicle/')){
+   const url='./assets/vehicles/'+path.slice('@vehicle/'.length);
+   return new Promise((resolve,reject)=>assetLoader.load(url,gltf=>resolve(gltf.scene),undefined,reject));
+  }
+  return (async()=>{
+   const response=await fetch(ASSET_BASE+path+'.b64');
+   if(!response.ok)throw new Error('Asset request failed ('+response.status+'): '+path);
+   const encoded=(await response.text()).replace(/\s/g,'');
+   const binary=atob(encoded),bytes=new Uint8Array(binary.length);
+   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+   return await new Promise((resolve,reject)=>assetLoader.parse(bytes.buffer,'',gltf=>resolve(gltf.scene),reject));
+  })();
  })());
  return gltfPromises.get(path);
 }
-function fittedAsset(template,w,h,d,x=0,z=0,groundY=0,uniform=true){
- const wrapper=new THREE.Group(),model=template.clone(true);wrapper.add(model);model.updateMatrixWorld(true);
+function fittedAsset(template,w,h,d,x=0,z=0,groundY=0,uniform=true,yaw=0){
+ const wrapper=new THREE.Group(),model=template.clone(true);model.rotation.y=yaw;wrapper.add(model);model.updateMatrixWorld(true);
  const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3());
  let sx=w/Math.max(size.x,.001),sy=h/Math.max(size.y,.001),sz=d/Math.max(size.z,.001);
  if(uniform){const fit=Math.min(sx,sy,sz);sx=sy=sz=fit;}else{sy=Math.min(sy,(sx+sz)*.5);}
@@ -228,17 +234,18 @@ const TREE_MODEL_PATHS=[
  'packs/nature-kit/tree-pinetallb-detailed.glb'
 ];
 const VEHICLE_MODEL_PATHS={
- bavaria:'packs/car-kit/sedan.glb',
- stuttgart:'packs/car-kit/sedan-sports.glb',
- tokyo:'packs/car-kit/hatchback-sports.glb',
- detroit:'packs/car-kit/sedan-sports.glb',
- luxor:'packs/car-kit/suv-luxury.glb',
- titan:'packs/car-kit/truck-flat.glb',
- goliath:'packs/car-kit/garbage-truck.glb',
- police:'packs/car-kit/police.glb'
+ bavaria:{primary:'@vehicle/sedan.glb',fallback:'packs/car-kit/sedan.glb'},
+ stuttgart:{primary:'@vehicle/sports-car.glb',fallback:'packs/car-kit/sedan-sports.glb'},
+ tokyo:{primary:'@vehicle/hatchback.glb',fallback:'packs/car-kit/hatchback-sports.glb'},
+ detroit:{primary:'@vehicle/classic-car.glb',fallback:'packs/car-kit/sedan-sports.glb'},
+ luxor:{primary:'@vehicle/suv.glb',fallback:'packs/car-kit/suv-luxury.glb'},
+ titan:{primary:'@vehicle/dump-truck.glb',fallback:'packs/car-kit/truck-flat.glb'},
+ goliath:{primary:'@vehicle/garbage-truck.glb',fallback:'packs/car-kit/garbage-truck.glb'},
+ police:{primary:'@vehicle/police-car.glb',fallback:'packs/car-kit/police.glb'}
 };
 async function upgradeWorldAssets(){
- const allPaths=[...new Set([...CITY_MODEL_PATHS,...TREE_MODEL_PATHS,...Object.values(VEHICLE_MODEL_PATHS)])];
+ const vehiclePaths=Object.values(VEHICLE_MODEL_PATHS).flatMap(v=>[v.primary,v.fallback]);
+ const allPaths=[...new Set([...CITY_MODEL_PATHS,...TREE_MODEL_PATHS,...vehiclePaths])];
  const notice=document.getElementById('notice');if(IS_MOBILE){notice.textContent='Загружаю дополнительные 3D-модели…';notice.style.display='block';}
  const loaded=new Map();
  await Promise.allSettled(allPaths.map(async path=>{try{loaded.set(path,await loadGltf(path));}catch(err){console.warn('Не удалось загрузить модель '+path,err);}}));
@@ -255,11 +262,26 @@ async function upgradeWorldAssets(){
   root.clear();const template=trees[i%trees.length],sizeHeight=6.2+(i%4)*.65;const item=fittedAsset(template,6.2,sizeHeight,6.2,0,0,0,true);root.add(item.wrapper);
  });
  // Real vehicle meshes retain the existing driving physics and touch controls.
- let carsUpgraded=0;
- for(const vehicle of vehicles){const path=VEHICLE_MODEL_PATHS[vehicle.spec.id];if(!path)continue;const template=loaded.get(path);if(!template)continue;
-  const item=fittedAsset(template,vehicle.spec.w,vehicle.spec.h,vehicle.spec.l,0,0,0,true);vehicle.bodyTilt.add(item.wrapper);vehicle.assetVisual=item.wrapper;vehicle.fallbackChildren.forEach(o=>{o.visible=false;});carsUpgraded++;
+ let carsUpgraded=0,legacyCars=0;
+ for(const vehicle of vehicles){
+  const config=VEHICLE_MODEL_PATHS[vehicle.spec.id];if(!config)continue;
+  let template=loaded.get(config.primary),usedLegacy=false;
+  if(!template){template=loaded.get(config.fallback);usedLegacy=!!template;}
+  if(!template)continue;
+  const item=fittedAsset(template,vehicle.spec.w,vehicle.spec.h,vehicle.spec.l,0,0,0,true,config.yaw||0);
+  vehicle.bodyTilt.add(item.wrapper);vehicle.assetVisual=item.wrapper;vehicle.assetWheels=[];
+  item.model.traverse(o=>{
+   if(o.isMesh&&/(wheel|tire|tyre)/i.test(o.name)){
+    vehicle.assetWheels.push({node:o,front:/(front|_fl|_fr|wheel.?f)/i.test(o.name),baseX:o.rotation.x,baseY:o.rotation.y,spin:0});
+   }
+  });
+  // The old procedural wheels are attached to the vehicle root, not to its new GLB body.
+  // Hide them only when the imported model already contains its own wheels.
+  if(vehicle.assetWheels.length)vehicle.wheels.forEach(w=>{w.group.visible=false;});
+  vehicle.fallbackChildren.forEach(o=>{o.visible=false;});
+  carsUpgraded++;if(usedLegacy)legacyCars++;
  }
- console.info('CC0 asset upgrade:',{loaded:loaded.size,total:allPaths.length,buildings:buildings.length,trees:trees.length,cars:carsUpgraded});
+ console.info('CC0 vehicle upgrade:',{loaded:loaded.size,total:allPaths.length,buildings:buildings.length,trees:trees.length,cars:carsUpgraded,legacyCars});
  if(IS_MOBILE){notice.textContent=loaded.size===allPaths.length?'3D-модели подключены':'Часть 3D-моделей недоступна';notice.style.display='block';setTimeout(()=>{notice.style.display='none';},2600);}
 }
 if(assetLoader)upgradeWorldAssets().catch(err=>console.warn('Не удалось применить 3D-модели; оставляю резервную графику.',err));
@@ -303,7 +325,9 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
  if(player.wanted>0){player.wantedDecayTimer-=dt;if(player.wantedDecayTimer<=0){player.wanted=Math.max(0,player.wanted-1);player.wantedDecayTimer=20;updateStarsHUD();}}
  if(!player.inVehicle){let moveSpeed=0;const maxWalk=keys.ShiftLeft||keys.ShiftRight?10.5:5.5;if(keys.KeyW||keys.ArrowUp)moveSpeed=maxWalk;if(keys.KeyS||keys.ArrowDown)moveSpeed=-4;if(keys.KeyA||keys.ArrowLeft)playerHuman.mesh.rotation.y+=3.2*dt;if(keys.KeyD||keys.ArrowRight)playerHuman.mesh.rotation.y-=3.2*dt;const nx=playerHuman.mesh.position.x+Math.sin(playerHuman.mesh.rotation.y)*moveSpeed*dt,nz=playerHuman.mesh.position.z+Math.cos(playerHuman.mesh.rotation.y)*moveSpeed*dt;if(!checkBuildingCollision(nx,nz,.5)){playerHuman.mesh.position.x=nx;playerHuman.mesh.position.z=nz;}playerHuman.animate(Math.abs(moveSpeed),elapsed);let near=null,minDist=6.5;vehicles.forEach(v=>{const d=v.mesh.position.distanceTo(playerHuman.mesh.position);if(d<minDist){minDist=d;near=v;}});const pr=document.getElementById('prompt');if(near){pr.style.display='block';document.getElementById('prompt-veh').textContent=near.spec.name;}else pr.style.display='none';
  }else{const v=player.inVehicle,s=v.spec;if(s.type==='heli'){const lift=(keys.Space?14:0)-((keys.ShiftLeft||keys.ShiftRight)?12:0);v.vy=THREE.MathUtils.lerp(v.vy,lift,3*dt);v.mesh.position.y=Math.max(0,v.mesh.position.y+v.vy*dt);const inFly=v.mesh.position.y>.4;if(inFly){const fwd=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),side=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),yaw=(keys.KeyQ?1:0)-(keys.KeyE?1:0);v.speed=THREE.MathUtils.lerp(v.speed,fwd*s.maxSpeed,1.8*dt);v.mesh.rotation.y+=(yaw*1.8+side*.9)*dt;v.pitch=THREE.MathUtils.lerp(v.pitch,fwd*.26,4*dt);v.roll=THREE.MathUtils.lerp(v.roll,side*.32,4*dt);v.mesh.position.x+=Math.sin(v.mesh.rotation.y)*v.speed*dt;v.mesh.position.z+=Math.cos(v.mesh.rotation.y)*v.speed*dt;}else{v.speed*=.9;v.pitch*=.85;v.roll*=.85;}v.bodyTilt.rotation.x=v.pitch;v.bodyTilt.rotation.z=v.roll;if(v.mainRotor)v.mainRotor.rotation.y+=(inFly?26:10)*dt;if(v.tailRotor)v.tailRotor.rotation.x+=(inFly?30:10)*dt;
- }else{let throttle=0;if(keys.KeyW||keys.ArrowUp)throttle=1;if(keys.KeyS||keys.ArrowDown)throttle=-1;const handbrake=!!keys.Space;v.brakeMat.color.setHex(throttle<0||handbrake?0xff1111:0x660000);if(throttle!==0&&!handbrake)v.speed+=throttle*(throttle>0?s.accel:s.accel*.75)*dt;else{const drag=handbrake?32:8.5;if(Math.abs(v.speed)>.2)v.speed-=Math.sign(v.speed)*drag*dt;else v.speed=0;}v.speed=THREE.MathUtils.clamp(v.speed,-s.maxSpeed*.38,s.maxSpeed);const steerInput=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);v.steer=THREE.MathUtils.lerp(v.steer,steerInput,7*dt);if(Math.abs(v.speed)>.4){const factor=Math.min(1,Math.abs(v.speed)/8),sign=Math.sign(v.speed);v.mesh.rotation.y+=v.steer*s.handling*factor*sign*(handbrake?1.45:1)*dt;}v.bodyTilt.rotation.z=THREE.MathUtils.lerp(v.bodyTilt.rotation.z,-v.steer*(v.speed/s.maxSpeed)*.14,8*dt);v.bodyTilt.rotation.x=THREE.MathUtils.lerp(v.bodyTilt.rotation.x,-throttle*.045,6*dt);v.wheels.forEach(w=>{w.tire.rotation.x+=(v.speed/.45)*dt;if(w.isFront)w.group.rotation.y=v.steer*.42;});const nx=v.mesh.position.x+Math.sin(v.mesh.rotation.y)*v.speed*dt,nz=v.mesh.position.z+Math.cos(v.mesh.rotation.y)*v.speed*dt;if(!checkBuildingCollision(nx,nz,s.w*.6)){v.mesh.position.x=nx;v.mesh.position.z=nz;}else v.speed=-v.speed*.35;}document.getElementById('speed-val').textContent=Math.round(Math.abs(v.speed)*3.2);document.getElementById('gear-val').textContent=s.type==='heli'?'ALT '+Math.round(v.mesh.position.y)+'M':(v.speed<-.5?'R':'D');}
+ }else{let throttle=0;if(keys.KeyW||keys.ArrowUp)throttle=1;if(keys.KeyS||keys.ArrowDown)throttle=-1;const handbrake=!!keys.Space;v.brakeMat.color.setHex(throttle<0||handbrake?0xff1111:0x660000);if(throttle!==0&&!handbrake)v.speed+=throttle*(throttle>0?s.accel:s.accel*.75)*dt;else{const drag=handbrake?32:8.5;if(Math.abs(v.speed)>.2)v.speed-=Math.sign(v.speed)*drag*dt;else v.speed=0;}v.speed=THREE.MathUtils.clamp(v.speed,-s.maxSpeed*.38,s.maxSpeed);const steerInput=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);v.steer=THREE.MathUtils.lerp(v.steer,steerInput,7*dt);if(Math.abs(v.speed)>.4){const factor=Math.min(1,Math.abs(v.speed)/8),sign=Math.sign(v.speed);v.mesh.rotation.y+=v.steer*s.handling*factor*sign*(handbrake?1.45:1)*dt;}v.bodyTilt.rotation.z=THREE.MathUtils.lerp(v.bodyTilt.rotation.z,-v.steer*(v.speed/s.maxSpeed)*.14,8*dt);v.bodyTilt.rotation.x=THREE.MathUtils.lerp(v.bodyTilt.rotation.x,-throttle*.045,6*dt);v.wheels.forEach(w=>{w.tire.rotation.x+=(v.speed/.45)*dt;if(w.isFront)w.group.rotation.y=v.steer*.42;});
+  if(v.assetWheels)v.assetWheels.forEach(w=>{w.spin+=(v.speed/.45)*dt;w.node.rotation.x=w.baseX+w.spin;if(w.front)w.node.rotation.y=w.baseY+v.steer*.42;});
+  const nx=v.mesh.position.x+Math.sin(v.mesh.rotation.y)*v.speed*dt,nz=v.mesh.position.z+Math.cos(v.mesh.rotation.y)*v.speed*dt;if(!checkBuildingCollision(nx,nz,s.w*.6)){v.mesh.position.x=nx;v.mesh.position.z=nz;}else v.speed=-v.speed*.35;}document.getElementById('speed-val').textContent=Math.round(Math.abs(v.speed)*3.2);document.getElementById('gear-val').textContent=s.type==='heli'?'ALT '+Math.round(v.mesh.position.y)+'M':(v.speed<-.5?'R':'D');}
  const targetPos=(player.inVehicle?player.inVehicle.mesh:playerHuman.mesh).position;
  vehicles.forEach(v=>{if(v.sirenRed&&v.sirenBlue){const active=(v.isCop&&player.wanted>0)||v===player.inVehicle;if(active){const flash=Math.floor(elapsed*8)%2===0;v.sirenRed.material.color.setHex(flash?0xff0000:0x330000);v.sirenBlue.material.color.setHex(flash?0x002244:0x0088ff);}}if(!v.isAI)return;if(v.isCop&&player.wanted>0){const dx=targetPos.x-v.mesh.position.x,dz=targetPos.z-v.mesh.position.z,ang=Math.atan2(dx,dz);let diff=ang-v.mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff< -Math.PI)diff+=Math.PI*2;v.mesh.rotation.y+=Math.sign(diff)*Math.min(Math.abs(diff),2.5*dt);v.speed=THREE.MathUtils.lerp(v.speed,32,2*dt);}else v.speed=16;const nx=v.mesh.position.x+Math.sin(v.mesh.rotation.y)*v.speed*dt,nz=v.mesh.position.z+Math.cos(v.mesh.rotation.y)*v.speed*dt;if(!checkBuildingCollision(nx,nz,2)){v.mesh.position.x=nx;v.mesh.position.z=nz;}else v.mesh.rotation.y+=Math.PI/2;if(player.inVehicle&&player.inVehicle!==v&&player.inVehicle.mesh.position.y<2){const dist=v.mesh.position.distanceTo(player.inVehicle.mesh.position);if(dist<3.6){player.inVehicle.mesh.position.x+=(player.inVehicle.mesh.position.x-v.mesh.position.x)*.3;player.inVehicle.mesh.position.z+=(player.inVehicle.mesh.position.z-v.mesh.position.z)*.3;if(Math.abs(player.inVehicle.speed)>12)addWanted(v.isCop?2:1);}}});
  pedestrians.forEach(p=>{if(!p.alive)return;p.timer-=dt;if(p.timer<=0){p.dir+=(Math.random()-.5)*1.5;p.timer=3+Math.random()*4;}const nx=p.mesh.position.x+Math.sin(p.dir)*p.speed*dt,nz=p.mesh.position.z+Math.cos(p.dir)*p.speed*dt;if(!checkBuildingCollision(nx,nz,.6)){p.mesh.position.x=nx;p.mesh.position.z=nz;p.mesh.rotation.y=p.dir;}else p.dir+=Math.PI;p.human.animate(p.speed,elapsed);if(player.inVehicle&&player.inVehicle.mesh.position.y<1.5&&Math.abs(player.inVehicle.speed)>6&&p.mesh.position.distanceTo(player.inVehicle.mesh.position)<2.2){p.alive=false;p.mesh.rotation.x=-Math.PI/2;p.mesh.position.y=.2;addWanted(p.isPolice?3:1);}});

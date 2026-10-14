@@ -29,6 +29,7 @@ jobs:
           mkdir -p _site
           test -s game.html
           cp game.html _site/game.html
+          if [ -d assets ]; then cp -R assets _site/assets; fi
           test -s _site/game.html
           cat > _site/index.html <<'EOF'
           <!doctype html>

@@ -88,6 +88,7 @@
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 'use strict';
 if (!window.THREE) {
@@ -102,6 +103,7 @@ const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 90
 const renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
 renderer.domElement.className = 'webgl';
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.35 : 1.75));
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = !IS_MOBILE;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -134,20 +136,20 @@ function makeClothTexture(jacketColor,shirtColor){const c=document.createElement
 function makeFaceTexture(skinColor){const c=document.createElement('canvas');c.width=64;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle=skinColor;ctx.fillRect(0,0,64,64);ctx.fillStyle='#fff';ctx.fillRect(14,24,10,6);ctx.fillRect(40,24,10,6);ctx.fillStyle='#111';ctx.fillRect(18,25,4,4);ctx.fillRect(44,25,4,4);ctx.fillStyle='#2c1e14';ctx.fillRect(13,20,12,3);ctx.fillRect(39,20,12,3);ctx.fillStyle='#924c4c';ctx.fillRect(24,46,16,4);return new THREE.CanvasTexture(c);}
 
 // 2. World, roads and buildings
-const colliders=[], trafficLights=[];
+const colliders=[], trafficLights=[], treeRoots=[], cityPlaceholders=[], buildingSlots=[];
 const BLOCK_SIZE=110, ROAD_WIDTH=24, STEP=BLOCK_SIZE+ROAD_WIDTH;
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(1600,1600),new THREE.MeshLambertMaterial({color:0x3a5f38}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=!IS_MOBILE;scene.add(ground);
 const roadMat=new THREE.MeshLambertMaterial({map:makeRoadTexture()});
 const sidewalkMat=new THREE.MeshLambertMaterial({color:0x95a5a6});
 const bldTextures=[makeBuildingTexture('#546e7a','#ffe082'),makeBuildingTexture('#78909c','#fff9c4'),makeBuildingTexture('#8d6e63','#ffecb3'),makeBuildingTexture('#455a64','#b3e5fc'),makeBuildingTexture('#607d8b','#ffe082')];
-function createTree(x,z){const g=new THREE.Group();const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3.2,7),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1.6;g.add(trunk);const lm=new THREE.MeshLambertMaterial({color:0x2e7d32});for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry(2.4-i*.45,3.2,7),lm);crown.position.y=3.6+i*1.4;g.add(crown);}g.position.set(x,0,z);scene.add(g);}
+function createTree(x,z){const g=new THREE.Group();const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3.2,7),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1.6;g.add(trunk);const lm=new THREE.MeshLambertMaterial({color:0x2e7d32});for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry(2.4-i*.45,3.2,7),lm);crown.position.y=3.6+i*1.4;g.add(crown);}g.position.set(x,0,z);scene.add(g);treeRoots.push(g);}
 function createStreetProp(x,z,rotY,isTrafficLight){const g=new THREE.Group(),pm=new THREE.MeshLambertMaterial({color:0x2c3e50});const pole=new THREE.Mesh(new THREE.CylinderGeometry(.12,.15,6.2,8),pm);pole.position.y=3.1;g.add(pole);if(isTrafficLight){const arm=new THREE.Mesh(new THREE.BoxGeometry(3.2,.15,.15),pm);arm.position.set(1.5,5.8,0);g.add(arm);const box=new THREE.Mesh(new THREE.BoxGeometry(.5,1.4,.5),new THREE.MeshLambertMaterial({color:0x111111}));box.position.set(2.8,5.4,0);g.add(box);const rMat=new THREE.MeshBasicMaterial({color:0xff0000}),yMat=new THREE.MeshBasicMaterial({color:0x332200}),gMat=new THREE.MeshBasicMaterial({color:0x003300}),geo=new THREE.SphereGeometry(.14,8,8);const r=new THREE.Mesh(geo,rMat),y=new THREE.Mesh(geo,yMat),gr=new THREE.Mesh(geo,gMat);r.position.set(2.8,5.8,.26);y.position.set(2.8,5.4,.26);gr.position.set(2.8,5,.26);g.add(r,y,gr);trafficLights.push({rMat,yMat,gMat,phaseOffset:Math.abs(x+z)%2});}else{const sign=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.08,8),new THREE.MeshBasicMaterial({color:0xe74c3c}));sign.rotation.x=Math.PI/2;sign.position.set(0,3.8,0);g.add(sign);const hydrant=new THREE.Mesh(new THREE.CylinderGeometry(.22,.26,.85,8),new THREE.MeshLambertMaterial({color:0xc0392b}));hydrant.position.set(.9,.42,0);g.add(hydrant);}g.position.set(x,0,z);g.rotation.y=rotY;scene.add(g);}
 for(let gx=-3;gx<=3;gx++){const rx=gx*STEP;const rv=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH,1100),roadMat);rv.rotation.x=-Math.PI/2;rv.position.set(rx,.03,0);scene.add(rv);const rh=new THREE.Mesh(new THREE.PlaneGeometry(1100,ROAD_WIDTH),roadMat);rh.rotation.x=-Math.PI/2;rh.rotation.z=Math.PI/2;rh.position.set(0,.04,rx);scene.add(rh);}
 for(let bx=-3;bx<=2;bx++)for(let bz=-3;bz<=2;bz++){
  const cx=bx*STEP+STEP/2,cz=bz*STEP+STEP/2;const sw=new THREE.Mesh(new THREE.BoxGeometry(BLOCK_SIZE,.3,BLOCK_SIZE),sidewalkMat);sw.position.set(cx,.15,cz);scene.add(sw);
  createStreetProp(cx-BLOCK_SIZE/2+1.5,cz-BLOCK_SIZE/2+1.5,0,true);createStreetProp(cx+BLOCK_SIZE/2-1.5,cz+BLOCK_SIZE/2-1.5,Math.PI,true);createStreetProp(cx+BLOCK_SIZE/2-1.5,cz-BLOCK_SIZE/2+1.5,-Math.PI/2,false);
  if(bx===0&&bz===0){const pad=new THREE.Mesh(new THREE.CylinderGeometry(11,11,.4,24),new THREE.MeshLambertMaterial({color:0x34495e}));pad.position.set(cx+28,.35,cz-25);scene.add(pad);const ring=new THREE.Mesh(new THREE.RingGeometry(7.5,8.5,24),new THREE.MeshBasicMaterial({color:0xf1c40f,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(cx+28,.58,cz-25);scene.add(ring);for(let t=-40;t<=40;t+=20){createTree(cx+t,cz+42);createTree(cx-44,cz+t);}continue;}
- const offsets=[[-24,-24],[24,-24],[-24,24],[24,24]];for(const [ox,oz] of offsets){const w=28+Math.random()*10,d=28+Math.random()*10,h=22+Math.random()*55,tex=bldTextures[Math.floor(Math.random()*bldTextures.length)],mat=new THREE.MeshLambertMaterial({map:tex});const bld=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);bld.position.set(cx+ox,h/2+.3,cz+oz);bld.castShadow=!IS_MOBILE;bld.receiveShadow=!IS_MOBILE;scene.add(bld);const roof=new THREE.Mesh(new THREE.BoxGeometry(w-2,1.2,d-2),new THREE.MeshLambertMaterial({color:0x263238}));roof.position.set(cx+ox,h+.9,cz+oz);scene.add(roof);colliders.push({x:cx+ox,z:cz+oz,hw:w/2+.8,hd:d/2+.8});}createTree(cx,cz-46);createTree(cx,cz+46);
+ const offsets=[[-24,-24],[24,-24],[-24,24],[24,24]];for(const [ox,oz] of offsets){const w=28+Math.random()*10,d=28+Math.random()*10,h=22+Math.random()*55,tex=bldTextures[Math.floor(Math.random()*bldTextures.length)],mat=new THREE.MeshLambertMaterial({map:tex});const bld=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);bld.position.set(cx+ox,h/2+.3,cz+oz);bld.castShadow=!IS_MOBILE;bld.receiveShadow=!IS_MOBILE;cityPlaceholders.push(bld);scene.add(bld);const roof=new THREE.Mesh(new THREE.BoxGeometry(w-2,1.2,d-2),new THREE.MeshLambertMaterial({color:0x263238}));roof.position.set(cx+ox,h+.9,cz+oz);cityPlaceholders.push(roof);scene.add(roof);buildingSlots.push({x:cx+ox,z:cz+oz,w,h,d});colliders.push({x:cx+ox,z:cz+oz,hw:w/2+.8,hd:d/2+.8});}createTree(cx,cz-46);createTree(cx,cz+46);
 }
 
 // 3. Character builder
@@ -177,10 +179,84 @@ function spawnVehicle(spec,x,z,rotY=0,isAI=false,isCop=false){const root=new THR
   const hw=spec.w*.36,hl=new THREE.Mesh(new THREE.BoxGeometry(.32,.18,.1),lightFrontMat);hl.position.set(-hw,.72,spec.l/2+.02);const hr=hl.clone();hr.position.x=hw;const tl=new THREE.Mesh(new THREE.BoxGeometry(.36,.18,.1),lightBrakeMat);tl.position.set(-hw,.72,-spec.l/2-.02);const tr=tl.clone();tr.position.x=hw;bodyTilt.add(hl,hr,tl,tr);
   const wr=heavy?.56:.42,ww=spec.type==='moto'?.25:.34,wg=new THREE.CylinderGeometry(wr,wr,ww,12);wg.rotateZ(Math.PI/2);const rg=new THREE.CylinderGeometry(wr*.58,wr*.58,ww+.02,10);rg.rotateZ(Math.PI/2);const zpos=heavy?[spec.l*.34,-spec.l*.15,-spec.l*.36]:[spec.l*.33,-spec.l*.33];zpos.forEach((wz,idx)=>{(spec.type==='moto'?[0]:[-1,1]).forEach(s=>{const gr=new THREE.Group();gr.position.set(s*(spec.w/2),wr,wz);const tire=new THREE.Mesh(wg,darkMat),rim=new THREE.Mesh(rg,chromeMat);gr.add(tire,rim);root.add(gr);wheels.push({group:gr,tire,isFront:idx===0});});});
  }
- root.position.set(x,0,z);root.rotation.y=rotY;scene.add(root);const v={spec,mesh:root,bodyTilt,wheels,mainRotor,tailRotor,sirenRed,sirenBlue,brakeMat:lightBrakeMat,speed:0,steer:0,vy:0,pitch:0,roll:0,isAI,isCop};vehicles.push(v);return v;}
+ const fallbackChildren=bodyTilt.children.slice();root.position.set(x,0,z);root.rotation.y=rotY;scene.add(root);const v={spec,mesh:root,bodyTilt,wheels,fallbackChildren,assetVisual:null,mainRotor,tailRotor,sirenRed,sirenBlue,brakeMat:lightBrakeMat,speed:0,steer:0,vy:0,pitch:0,roll:0,isAI,isCop};vehicles.push(v);return v;}
 const startX=48,startZ=82;
 VEHICLE_SPECS.forEach((s,i)=>{if(s.type==='heli')spawnVehicle(s,95,42,-Math.PI/4);else{const row=Math.floor(i/5),col=i%5;spawnVehicle(s,32+col*8.5,62-row*16,0);}});
 for(let i=0;i<(IS_MOBILE?10:18);i++){const isCop=i<(IS_MOBILE?2:4),spec=isCop?VEHICLE_SPECS.find(s=>s.id==='police'):VEHICLE_SPECS[i%7],gx=Math.floor(Math.random()*5)-2,gz=Math.floor(Math.random()*5)-2;spawnVehicle(spec,gx*STEP+5.5,gz*STEP+(Math.random()*60-30),0,true,isCop);}
+
+
+// 4.5. CC0 GLB asset upgrade. Procedural models stay visible if any asset fails to load.
+const ASSET_BASE='https://raw.githubusercontent.com/Hidencod/tge-assets/main/';
+const assetLoader=THREE.GLTFLoader?new THREE.GLTFLoader():null;
+const gltfPromises=new Map();
+function loadGltf(path){
+ if(!assetLoader)return Promise.reject(new Error('GLTFLoader is unavailable'));
+ if(!gltfPromises.has(path))gltfPromises.set(path,new Promise((resolve,reject)=>assetLoader.load(ASSET_BASE+path,gltf=>resolve(gltf.scene),undefined,reject)));
+ return gltfPromises.get(path);
+}
+function fittedAsset(template,w,h,d,x=0,z=0,groundY=0,uniform=true){
+ const wrapper=new THREE.Group(),model=template.clone(true);wrapper.add(model);model.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3());
+ let sx=w/Math.max(size.x,.001),sy=h/Math.max(size.y,.001),sz=d/Math.max(size.z,.001);
+ if(uniform){const fit=Math.min(sx,sy,sz);sx=sy=sz=fit;}else{sy=Math.min(sy,(sx+sz)*.5);}
+ wrapper.scale.set(sx,sy,sz);
+ wrapper.position.set(x-(box.min.x+box.max.x)*.5*sx,groundY-box.min.y*sy,z-(box.min.z+box.max.z)*.5*sz);
+ model.traverse(o=>{if(o.isMesh){o.castShadow=!IS_MOBILE;o.receiveShadow=!IS_MOBILE;}});
+ return {wrapper,model};
+}
+const CITY_MODEL_PATHS=[
+ 'packs/city-kit-commercial/building-a.glb',
+ 'packs/city-kit-commercial/building-c.glb',
+ 'packs/city-kit-commercial/building-f.glb',
+ 'packs/city-kit-commercial/building-g.glb',
+ 'packs/city-kit-commercial/building-h.glb',
+ 'packs/city-kit-commercial/building-skyscraper-a.glb',
+ 'packs/city-kit-commercial/building-skyscraper-c.glb',
+ 'packs/city-kit-commercial/building-skyscraper-e.glb'
+];
+const TREE_MODEL_PATHS=[
+ 'packs/nature-kit/tree-detailed.glb',
+ 'packs/nature-kit/tree-oak.glb',
+ 'packs/nature-kit/tree-pinetalla-detailed.glb',
+ 'packs/nature-kit/tree-pinetallb-detailed.glb'
+];
+const VEHICLE_MODEL_PATHS={
+ bavaria:'packs/car-kit/sedan.glb',
+ stuttgart:'packs/car-kit/sedan-sports.glb',
+ tokyo:'packs/car-kit/hatchback-sports.glb',
+ detroit:'packs/car-kit/sedan-sports.glb',
+ luxor:'packs/car-kit/suv-luxury.glb',
+ titan:'packs/car-kit/truck-flat.glb',
+ goliath:'packs/car-kit/garbage-truck.glb',
+ police:'packs/car-kit/police.glb'
+};
+async function upgradeWorldAssets(){
+ const allPaths=[...new Set([...CITY_MODEL_PATHS,...TREE_MODEL_PATHS,...Object.values(VEHICLE_MODEL_PATHS)])];
+ const notice=document.getElementById('notice');if(IS_MOBILE){notice.textContent='Загружаю дополнительные 3D-модели…';notice.style.display='block';}
+ const loaded=new Map();
+ await Promise.allSettled(allPaths.map(async path=>{try{loaded.set(path,await loadGltf(path));}catch(err){console.warn('Не удалось загрузить модель '+path,err);}}));
+ // Replace the distant box-built skyline with reusable detailed city-kit buildings.
+ const buildings=CITY_MODEL_PATHS.map(p=>loaded.get(p)).filter(Boolean);
+ if(buildings.length){
+  cityPlaceholders.forEach(o=>{scene.remove(o);if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});
+  buildingSlots.forEach((slot,i)=>{const template=buildings[(i*7+Math.floor(i/3))%buildings.length];const item=fittedAsset(template,slot.w,Math.min(slot.h,68),slot.d,slot.x,slot.z,.3,false);scene.add(item.wrapper);});
+ }
+ // Replace low-detail cone trees with CC0 nature models, while preserving each tree's position.
+ const trees=TREE_MODEL_PATHS.map(p=>loaded.get(p)).filter(Boolean);
+ if(trees.length)treeRoots.forEach((root,i)=>{
+  root.children.forEach(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});
+  root.clear();const template=trees[i%trees.length],sizeHeight=6.2+(i%4)*.65;const item=fittedAsset(template,6.2,sizeHeight,6.2,0,0,0,true);root.add(item.wrapper);
+ });
+ // Real vehicle meshes retain the existing driving physics and touch controls.
+ let carsUpgraded=0;
+ for(const vehicle of vehicles){const path=VEHICLE_MODEL_PATHS[vehicle.spec.id];if(!path)continue;const template=loaded.get(path);if(!template)continue;
+  const item=fittedAsset(template,vehicle.spec.w,vehicle.spec.h,vehicle.spec.l,0,0,0,true);vehicle.bodyTilt.add(item.wrapper);vehicle.assetVisual=item.wrapper;vehicle.fallbackChildren.forEach(o=>{o.visible=false;});carsUpgraded++;
+ }
+ console.info('CC0 asset upgrade:',{loaded:loaded.size,total:allPaths.length,buildings:buildings.length,trees:trees.length,cars:carsUpgraded});
+ if(IS_MOBILE){notice.textContent=loaded.size===allPaths.length?'3D-модели подключены':'Часть 3D-моделей недоступна';notice.style.display='block';setTimeout(()=>{notice.style.display='none';},2600);}
+}
+if(assetLoader)upgradeWorldAssets().catch(err=>console.warn('Не удалось применить 3D-модели; оставляю резервную графику.',err));
+else console.warn('GLTFLoader is missing; using procedural models.');
 
 // 5. Pedestrians
 const pedestrians=[],jackets=['#c0392b','#2980b9','#27ae60','#8e44ad','#d35400','#34495e'],shirts=['#ecf0f1','#f1c40f','#1abc9c','#e74c3c'];

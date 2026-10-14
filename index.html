@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Grand City Sandbox 3D — загрузка</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#111;color:#fff;font:16px system-ui,sans-serif}
+main{min-height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+#status{max-width:400px}h1{font-size:24px;margin:0 0 12px}p{color:#bbb;line-height:1.5}
+.spin{width:34px;height:34px;border:3px solid #444;border-top-color:#00e5ff;border-radius:50%;animation:s .8s linear infinite;margin:22px auto}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<main><div id="status"><h1>Grand City Sandbox 3D</h1><div class="spin"></div><p>Загружаю город. На первом запуске подождите немного.</p></div></main>
+<script>
+(async()=>{
+ try{
+  if(!('DecompressionStream' in window)) throw new Error('Откройте сайт в актуальном Chrome на Android.');
+  const response=await fetch('./game.html.gz.b64',{cache:'no-store'});
+  if(!response.ok) throw new Error('Не удалось загрузить игру ('+response.status+'). Попробуйте обновить страницу через минуту.');
+  const encoded=(await response.text()).trim();
+  const binary=atob(encoded);
+  const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const html=await new Response(stream).text();
+  document.open();document.write(html);document.close();
+ }catch(e){
+  document.getElementById('status').innerHTML='<h1>Не удалось запустить игру</h1><p>'+String(e.message||e).replace(/[<>&]/g,'')+'</p><p>Проверьте интернет и откройте страницу в Chrome.</p>';
+ }
+})();
+</script>
+</body></html>

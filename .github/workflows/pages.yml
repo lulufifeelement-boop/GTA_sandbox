@@ -70,6 +70,20 @@ jobs:
           https://grab3d.com/models/vehicles/garbage-truck/
           EOF
           test -s _site/game.html
+          # Catch JavaScript syntax errors before publishing the game.
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('_site/game.html', 'utf8');
+          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
+            .filter(match => !/\\bsrc\\s*=/i.test(match[1]))
+            .map(match => match[2])
+            .filter(code => code.trim().length > 0);
+          if (scripts.length === 0) throw new Error('No inline game scripts found');
+          scripts.forEach((code, index) => { new Function(code); console.log('JavaScript syntax OK: inline script ' + (index + 1)); });
+          const assets = fs.readdirSync('_site/assets/vehicles').filter(name => name.endsWith('.glb'));
+          console.log('Bundled detailed vehicle models: ' + assets.length);
+          if (assets.length < 4) console.warn('Some detailed vehicles are missing; game fallbacks will be used.');
+          NODE
           cat > _site/index.html <<'EOF'
           <!doctype html>
           <html lang="ru">

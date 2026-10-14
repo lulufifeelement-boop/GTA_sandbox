@@ -118,6 +118,42 @@ if (!IS_MOBILE) {
 }
 scene.add(sunLight);
 
+// 0.1 Procedural image-based lighting for glossy vehicle paint and metal.
+// No external HDR download is needed, and this is safe to skip on older phones.
+function createVehicleEnvironment(){
+ try{
+  if(!THREE.PMREMGenerator||THREE.EquirectangularReflectionMapping===undefined)return;
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
+  const ctx=canvas.getContext('2d');
+  const sky=ctx.createLinearGradient(0,0,0,256);
+  sky.addColorStop(0,'#152844');sky.addColorStop(.30,'#477da4');sky.addColorStop(.48,'#b7d9e5');sky.addColorStop(.56,'#f4ead5');sky.addColorStop(.68,'#64717b');sky.addColorStop(1,'#1b2028');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,512,256);
+  // A distant skyline gives glossy paint believable dark-light reflections.
+  ctx.fillStyle='rgba(19,35,52,.72)';
+  for(let x=0;x<512;){
+   const width=9+((x*13)%23),height=15+((x*7)%42);
+   ctx.fillRect(x,135-height,width,height);x+=width+3;
+  }
+  // Broad soft-box highlights simulate a bright outdoor studio reflection.
+  [[34,35,66,9,.78],[176,26,38,76,.55],[292,42,90,8,.68],[426,24,26,64,.60]].forEach(([x,y,w,h,alpha])=>{
+   const g=ctx.createLinearGradient(x,y,x+w,y+h);
+   g.addColorStop(0,'rgba(255,255,255,0)');
+   g.addColorStop(.5,'rgba(255,255,255,'+alpha+')');
+   g.addColorStop(1,'rgba(255,255,255,0)');
+   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+  });
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.mapping=THREE.EquirectangularReflectionMapping;
+  texture.encoding=THREE.sRGBEncoding;
+  const generator=new THREE.PMREMGenerator(renderer);
+  generator.compileEquirectangularShader();
+  const target=generator.fromEquirectangular(texture);
+  scene.environment=target.texture;
+  texture.dispose();generator.dispose();
+ }catch(error){console.warn('Vehicle reflections disabled; continuing with standard lighting.',error);}
+}
+createVehicleEnvironment();
+
 // 1. Procedural textures
 function makeBuildingTexture(baseColor, winLitColor) {
   const c=document.createElement('canvas'); c.width=256; c.height=512;

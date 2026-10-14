@@ -74,10 +74,14 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('_site/game.html', 'utf8');
-          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-            .filter(match => !/\\bsrc\\s*=/i.test(match[1]))
-            .map(match => match[2])
-            .filter(code => code.trim().length > 0);
+          const scripts = html.split('<script').slice(1).map(part => {
+            const tagEnd = part.indexOf('>');
+            if (tagEnd < 0) return '';
+            const attrs = part.slice(0, tagEnd).toLowerCase();
+            if (attrs.includes('src=')) return '';
+            const close = part.indexOf('</script>', tagEnd + 1);
+            return close < 0 ? '' : part.slice(tagEnd + 1, close);
+          }).filter(code => code.trim().length > 0);
           if (scripts.length === 0) throw new Error('No inline game scripts found');
           scripts.forEach((code, index) => { new Function(code); console.log('JavaScript syntax OK: inline script ' + (index + 1)); });
           const assets = fs.readdirSync('_site/assets/vehicles').filter(name => name.endsWith('.glb'));

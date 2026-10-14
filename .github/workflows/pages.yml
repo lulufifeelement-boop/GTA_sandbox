@@ -70,23 +70,24 @@ jobs:
           https://grab3d.com/models/vehicles/garbage-truck/
           EOF
           test -s _site/game.html
-          # Catch JavaScript syntax errors before publishing the game.
+          # Extract the actual ES module and validate it with Node's ESM parser.
           node <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('_site/game.html', 'utf8');
-          const scripts = html.split('<script').slice(1).map(part => {
-            const tagEnd = part.indexOf('>');
-            if (tagEnd < 0) return '';
-            const attrs = part.slice(0, tagEnd).toLowerCase();
-            if (attrs.includes('src=')) return '';
-            const close = part.indexOf('</script>', tagEnd + 1);
-            return close < 0 ? '' : part.slice(tagEnd + 1, close);
-          }).filter(code => code.trim().length > 0);
-          if (scripts.length === 0) throw new Error('No inline game scripts found');
-          scripts.forEach((code, index) => { new Function(code); console.log('JavaScript syntax OK: inline script ' + (index + 1)); });
+          const open = html.indexOf('<script type="module">');
+          if (open < 0) throw new Error('No module game script found');
+          const start = html.indexOf('>', open) + 1;
+          const end = html.indexOf('</script>', start);
+          if (start <= 0 || end < 0) throw new Error('Malformed module game script');
+          fs.writeFileSync('_site/game-module-check.mjs', html.slice(start, end));
+          NODE
+          node --check _site/game-module-check.mjs
+          rm _site/game-module-check.mjs
+          node <<'NODE'
+          const fs = require('node:fs');
           const assets = fs.readdirSync('_site/assets/vehicles').filter(name => name.endsWith('.glb'));
           console.log('Bundled detailed vehicle models: ' + assets.length);
-          if (assets.length < 4) console.warn('Some detailed vehicles are missing; game fallbacks will be used.');
+          if (assets.length < 4) console.warn('Some detailed vehicles are missing; fallback models remain available.');
           NODE
           cat > _site/index.html <<'EOF'
           <!doctype html>
